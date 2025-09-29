@@ -102,13 +102,21 @@ export default function Index() {
       const uploadResp = await fetch("/api/whatsapp/image-url", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imageDataUrl: dataUrl, name: `${message}.png` }),
+        body: JSON.stringify({ imageDataUrl: dataUrl, name: `${message}.png`, publicBase: cfg.imageHost || undefined }),
       });
       const uploadJson = await uploadResp.json();
       if (!uploadResp.ok || !uploadJson?.url) {
         console.error(uploadJson);
         toast.error("Failed to prepare image URL");
         return;
+      }
+      let fileUrl: string = uploadJson.url;
+      if (cfg.imageHost) {
+        try {
+          const tempU = new URL(fileUrl);
+          const baseU = new URL(cfg.imageHost);
+          fileUrl = `${baseU.origin}${tempU.pathname}`;
+        } catch {}
       }
 
       const payload: any = {
@@ -117,7 +125,7 @@ export default function Index() {
         authkey: cfg.authkey,
         to: phone,
         message,
-        fileUrl: uploadJson.url,
+        fileUrl,
       };
       if (cfg.templateId) payload.template_id = cfg.templateId;
 
