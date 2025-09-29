@@ -80,7 +80,8 @@ export function createServer() {
 
   // Compact temporary URLs: /i/:id and /i/:id.:ext -> serves a short-named file "<ts>-<id>.<ext>" with TTL
   const serveShort = (req: any, res: any) => {
-    const id = String(req.params.id || "");
+    const paramId = String(req.params.id || "");
+    const id = paramId.split(".")[0];
     if (!id) return res.status(400).json({ error: "Missing id" });
     const entries = fs.readdirSync(TEMP_UPLOAD_DIR);
     const match = entries.find((name) => {
@@ -95,8 +96,8 @@ export function createServer() {
     const filePath = path.join(TEMP_UPLOAD_DIR, match);
     res.sendFile(filePath);
   };
-  app.get("/i/:id", serveShort);
   app.get("/i/:id.:ext", serveShort);
+  app.get("/i/:id", serveShort);
 
   return app;
 }
