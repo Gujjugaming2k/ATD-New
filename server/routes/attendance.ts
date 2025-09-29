@@ -120,11 +120,13 @@ function summarizeRow(ws: XLSX.WorkSheet, rowIndex: number): AttendanceSummary {
     weekoff += cls.weekoff;
     otHours += cls.ot;
   }
-  // Override with summary columns when present: AJ (35) Present, AK (36) Absent, AL (37) Weekoff, AP (41) OT
+  // Override with summary columns when present: AJ (35) Present, AK (36) Absent, AL (37) Weekoff, AN (39) Minus, AP (41) OT, AQ (42) Kitchen
   const presentCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 35 })];
   const absentCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 36 })];
   const weekoffCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 37 })];
+  const minusCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 39 })];
   const otCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 41 })];
+  const kitchenCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 42 })];
 
   const parsedP = Number.parseFloat(String(presentCell?.v ?? ""));
   if (!Number.isNaN(parsedP)) present = parsedP;
@@ -132,10 +134,15 @@ function summarizeRow(ws: XLSX.WorkSheet, rowIndex: number): AttendanceSummary {
   if (!Number.isNaN(parsedA)) absent = parsedA;
   const parsedWO = Number.parseFloat(String(weekoffCell?.v ?? ""));
   if (!Number.isNaN(parsedWO)) weekoff = parsedWO;
+  const parsedMinus = Number.parseFloat(String(minusCell?.v ?? ""));
+  const minus = !Number.isNaN(parsedMinus) ? parsedMinus : undefined;
   const parsedOT = Number.parseFloat(String(otCell?.v ?? ""));
   if (!Number.isNaN(parsedOT)) otHours = parsedOT;
+  const parsedKitchen = Number.parseFloat(String(kitchenCell?.v ?? ""));
+  const kitchen = !Number.isNaN(parsedKitchen) ? parsedKitchen : undefined;
 
-  return { present, absent, weekoff, otHours };
+  const atd = present + weekoff;
+  return { present, absent, weekoff, otHours, atd, minus, kitchen };
 }
 
 attendanceRouter.get("/employees", ((req, res) => {
@@ -211,7 +218,10 @@ attendanceRouter.get("/summary", ((req, res) => {
   }
 
   const summary = summarizeRow(sheet, foundRow);
-  const response: AttendanceResponse = { file, employee: foundEmp, summary };
+  const bb = String(sheet[XLSX.utils.encode_cell({ r: foundRow, c: 53 })]?.v ?? "").trim();
+  const bc = String(sheet[XLSX.utils.encode_cell({ r: foundRow, c: 54 })]?.v ?? "").trim();
+  const br = String(sheet[XLSX.utils.encode_cell({ r: foundRow, c: 69 })]?.v ?? "").trim();
+  const response: AttendanceResponse = { file, employee: foundEmp, summary, details: { mobile1: bb || undefined, mobile2: bc || undefined, presentAddress: br || undefined } };
   res.json(response);
 }) as RequestHandler);
 
@@ -265,10 +275,14 @@ attendanceRouter.get("/daily", ((req, res) => {
   }
 
   const days = getDailyStatuses(sheet, foundRow);
+  const bb = String(sheet[XLSX.utils.encode_cell({ r: foundRow, c: 53 })]?.v ?? "").trim();
+  const bc = String(sheet[XLSX.utils.encode_cell({ r: foundRow, c: 54 })]?.v ?? "").trim();
+  const br = String(sheet[XLSX.utils.encode_cell({ r: foundRow, c: 69 })]?.v ?? "").trim();
   const responseDaily: DailyAttendanceResponse = {
     file,
     employee: foundEmp,
     days,
+    details: { mobile1: bb || undefined, mobile2: bc || undefined, presentAddress: br || undefined },
   };
   res.json(responseDaily);
 }) as RequestHandler);
