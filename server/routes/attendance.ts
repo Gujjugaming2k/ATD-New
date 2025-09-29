@@ -82,8 +82,9 @@ function summarizeRow(ws: XLSX.WorkSheet, rowIndex: number): AttendanceSummary {
   let absent = 0;
   let weekoff = 0;
   let otHours = 0;
-  // assume daily values start from column D (index 3)
-  for (let c = 3; c <= range.e.c; c++) {
+  // daily values start from D (3) through AH (33) => 31 days
+  const lastDayCol = Math.min(range.e.c, 33);
+  for (let c = 3; c <= lastDayCol; c++) {
     const cell = ws[XLSX.utils.encode_cell({ r: rowIndex, c })];
     const cls = classifyCell(cell?.v);
     present += cls.present;
@@ -91,6 +92,13 @@ function summarizeRow(ws: XLSX.WorkSheet, rowIndex: number): AttendanceSummary {
     weekoff += cls.weekoff;
     otHours += cls.ot;
   }
+  // Override with summary columns when present: AL (37) Weekoff, AP (41) OT
+  const weekoffCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 37 })];
+  const otCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 41 })];
+  const parsedWO = Number.parseFloat(String(weekoffCell?.v ?? ""));
+  if (!Number.isNaN(parsedWO)) weekoff = parsedWO;
+  const parsedOT = Number.parseFloat(String(otCell?.v ?? ""));
+  if (!Number.isNaN(parsedOT)) otHours = parsedOT;
   return { present, absent, weekoff, otHours };
 }
 
