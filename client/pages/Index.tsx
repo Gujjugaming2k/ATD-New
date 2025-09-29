@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AttendanceResponse,
@@ -9,6 +9,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { toPng } from "html-to-image";
 import {
   Select,
   SelectContent,
@@ -26,6 +27,28 @@ import {
 } from "@/components/ui/command";
 
 export default function Index() {
+  const captureRef = useRef<HTMLDivElement | null>(null);
+
+  async function handleDownload() {
+    if (!captureRef.current) return;
+    try {
+      const node = captureRef.current;
+      const dataUrl = await toPng(node, {
+        cacheBust: true,
+        pixelRatio: Math.min(window.devicePixelRatio || 2, 3),
+        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--background") ? undefined : "white",
+      });
+      const link = document.createElement("a");
+      const emp = summaryQuery.data?.employee;
+      const fileLabel = files.find((f) => f.filename === file)?.originalName || "report";
+      const namePart = emp ? `${emp.name.replace(/[^a-z0-9]+/gi, "_")}_${emp.number}` : "selection";
+      link.download = `${namePart}__${fileLabel.replace(/\s+/g, "_")}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (e) {
+      console.error("Failed to export image", e);
+    }
+  }
   const filesQuery = useQuery({
     queryKey: ["files"],
     queryFn: async (): Promise<FilesListResponse> => {
@@ -110,8 +133,16 @@ export default function Index() {
       </section>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Search Employee</CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownload}
+            disabled={!summaryQuery.data}
+          >
+            Download
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
@@ -171,6 +202,7 @@ export default function Index() {
             </div>
           </div>
 
+          <div ref={captureRef} className="space-y-4">
           {summaryQuery.data && (
             <div className="grid gap-4 sm:grid-cols-7">
               <StatCard
@@ -289,6 +321,8 @@ export default function Index() {
               </div>
             </div>
           )}
+
+          </div>
 
           {!files.length && (
             <div className="rounded-md border p-4 text-sm text-muted-foreground">
