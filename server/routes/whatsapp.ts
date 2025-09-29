@@ -36,6 +36,23 @@ function saveBufferToTemp(buffer: Buffer, originalName = "attendance.png") {
   return filename;
 }
 
+function randomId(len = 8) {
+  return crypto.randomBytes(len).toString("base64url").slice(0, len);
+}
+
+function saveBufferToShort(
+  buffer: Buffer,
+  opts?: { mime?: string; originalName?: string },
+) {
+  ensureTempDir();
+  const ext = (opts?.mime || "image/png").split("/")[1] || "png";
+  const id = randomId(8);
+  const filename = `${Date.now()}-${id}.${ext}`;
+  const full = path.join(TEMP_UPLOAD_DIR, filename);
+  fs.writeFileSync(full, buffer);
+  return { id, filename };
+}
+
 function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mime: string } {
   const [meta, base64] = (dataUrl || "").split(",");
   const mimeMatch = /data:([^;]+);base64/.exec(meta || "");
@@ -111,9 +128,7 @@ whatsappRouter.post("/image-url", async (req, res) => {
       return res.status(400).json({ error: "imageDataUrl is required" });
     }
     const d = dataUrlToBuffer(imageDataUrl);
-    const filename = saveBufferToTemp(d.buffer, originalName);
-    const exp = Date.now() + MEDIA_TTL_MS;
-    const sig = signMedia(filename, String(exp));
+    const { id } = saveBufferToShort(d.buffer, { mime: d.mime, originalName });
     let base = getPublicBase(req);
     const requested = String(req.body?.publicBase || "").trim();
     if (requested) {
@@ -122,8 +137,8 @@ whatsappRouter.post("/image-url", async (req, res) => {
         if (u.protocol === "http:" || u.protocol === "https:") base = u.origin;
       } catch {}
     }
-    const url = `${base}/uploads-temp/${exp}/${sig}/${encodeURIComponent(filename)}`;
-    res.json({ url, expiresAt: exp });
+    const url = `${base}/i/${id}`;
+    res.json({ url });
   } catch (e: any) {
     res
       .status(500)
@@ -163,11 +178,9 @@ whatsappRouter.post("/send", upload.none(), async (req, res) => {
       }
 
       if (buffer) {
-        const filename = saveBufferToTemp(buffer, originalName);
-        const exp = Date.now() + MEDIA_TTL_MS;
-        const sig = signMedia(filename, String(exp));
+        const { id } = saveBufferToShort(buffer, { originalName });
         const base = getPublicBase(req);
-        tempUrl = `${base}/uploads-temp/${exp}/${sig}/${encodeURIComponent(filename)}`;
+        tempUrl = `${base}/i/${id}`;
       }
     }
 
