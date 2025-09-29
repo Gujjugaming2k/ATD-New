@@ -36,7 +36,11 @@ filesRouter.get("/", ((_req, res) => {
   ensureUploadDir();
   const files = fs
     .readdirSync(UPLOAD_DIR)
-    .filter((f) => !f.startsWith("."))
+    .filter((f) => {
+      if (f.startsWith(".")) return false;
+      const lower = f.toLowerCase();
+      return lower.endsWith(".xls") || lower.endsWith(".xlsx");
+    })
     .map((filename) => {
       const stat = fs.statSync(path.join(UPLOAD_DIR, filename));
       const parts = filename.split("__");
