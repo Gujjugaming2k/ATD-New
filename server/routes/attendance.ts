@@ -93,9 +93,11 @@ attendanceRouter.get("/employees", ((req, res) => {
   const filePath = getFilePath(file);
   let wb: XLSX.WorkBook;
   try {
-    wb = XLSX.readFile(filePath);
-  } catch {
-    return res.status(404).json({ error: "File not found" });
+    const data = fs.readFileSync(filePath);
+    wb = XLSX.read(data, { type: "buffer" });
+  } catch (e: any) {
+    if (e && e.code === "ENOENT") return res.status(404).json({ error: "File not found" });
+    return res.status(400).json({ error: "Unable to read Excel file" });
   }
   const sheet = findPresentSheet(wb);
   if (!sheet) return res.status(400).json({ error: "Sheet 'present' not found" });
@@ -112,9 +114,11 @@ attendanceRouter.get("/summary", ((req, res) => {
   const filePath = getFilePath(file);
   let wb: XLSX.WorkBook;
   try {
-    wb = XLSX.readFile(filePath);
-  } catch {
-    return res.status(404).json({ error: "File not found" });
+    const data = fs.readFileSync(filePath);
+    wb = XLSX.read(data, { type: "buffer" });
+  } catch (e: any) {
+    if (e && e.code === "ENOENT") return res.status(404).json({ error: "File not found" });
+    return res.status(400).json({ error: "Unable to read Excel file" });
   }
   const sheet = findPresentSheet(wb);
   if (!sheet) return res.status(400).json({ error: "Sheet 'present' not found" });
