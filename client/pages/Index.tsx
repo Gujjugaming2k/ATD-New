@@ -36,7 +36,7 @@ export default function Index() {
       if (!raw) return null;
       const p = JSON.parse(raw);
       if (!p.appkey || !p.authkey || !p.endpoint) return null;
-      return p as { appkey: string; authkey: string; endpoint: string };
+      return p as { appkey: string; authkey: string; endpoint: string; templateId?: string };
     } catch {
       return null;
     }
