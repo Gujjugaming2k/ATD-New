@@ -1,20 +1,15 @@
 import { RequestHandler, Router } from "express";
+import multer from "multer";
+import FormData from "form-data";
 
 export const whatsappRouter = Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
-function dataUrlToBlob(dataUrl: string): Blob {
-  const [meta, base64] = dataUrl.split(",");
-  const mimeMatch = /data:([^;]+);base64/.exec(meta || "");
-  const mime = mimeMatch ? mimeMatch[1] : "application/octet-stream";
-  const buffer = Buffer.from(base64 || "", "base64");
-  return new Blob([buffer], { type: mime });
-}
-
-export const sendWhatsApp: RequestHandler = async (req, res) => {
+whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
   try {
-    const { endpoint, appkey, authkey, to, message, imageDataUrl } = req.body || {};
-    if (!endpoint || !appkey || !authkey || !to || !message || !imageDataUrl) {
-      return res.status(400).json({ error: "Missing endpoint/appkey/authkey/to/message/imageDataUrl" });
+    const { endpoint, appkey, authkey, to, message } = req.body || {};
+    if (!endpoint || !appkey || !authkey || !to || !message || !req.file) {
+      return res.status(400).json({ error: "Missing endpoint/appkey/authkey/to/message/file" });
     }
 
     const form = new FormData();
@@ -22,14 +17,16 @@ export const sendWhatsApp: RequestHandler = async (req, res) => {
     form.append("authkey", String(authkey));
     form.append("to", String(to));
     form.append("message", String(message));
-
-    const blob = dataUrlToBlob(String(imageDataUrl));
-    form.append("file", blob, "attendance.png");
+    form.append("file", req.file.buffer, {
+      filename: req.file.originalname || "attendance.png",
+      contentType: req.file.mimetype || "image/png",
+    } as any);
 
     const target = String(endpoint);
     const resp = await fetch(target, {
       method: "POST",
-      body: form,
+      body: form as any,
+      headers: form.getHeaders(),
     });
 
     const text = await resp.text();
@@ -48,6 +45,4 @@ export const sendWhatsApp: RequestHandler = async (req, res) => {
   } catch (e: any) {
     res.status(500).json({ error: "Failed to send WhatsApp", detail: e?.message || String(e) });
   }
-};
-
-whatsappRouter.post("/send", sendWhatsApp);
+});
