@@ -11,6 +11,7 @@ type WhatsAppConfig = {
   appkey: string;
   authkey: string;
   templateId?: string;
+  imageHost?: string; // e.g. https://your-domain.com
 };
 
 function loadConfig(): WhatsAppConfig {
@@ -22,6 +23,7 @@ function loadConfig(): WhatsAppConfig {
         appkey: "",
         authkey: "",
         templateId: "",
+        imageHost: "",
       };
     const parsed = JSON.parse(raw);
     return {
@@ -30,6 +32,7 @@ function loadConfig(): WhatsAppConfig {
       appkey: parsed.appkey || "",
       authkey: parsed.authkey || "",
       templateId: parsed.templateId || "",
+      imageHost: parsed.imageHost || "",
     };
   } catch {
     return {
@@ -37,6 +40,7 @@ function loadConfig(): WhatsAppConfig {
       appkey: "",
       authkey: "",
       templateId: "",
+      imageHost: "",
     };
   }
 }
@@ -49,8 +53,13 @@ export default function WhatsAppSettings() {
   const [config, setConfig] = useState<WhatsAppConfig>(() => loadConfig());
 
   useEffect(() => {
-    // noop, initial load handled in useState initializer
-  }, []);
+    const id = setTimeout(() => {
+      try {
+        saveConfig(config);
+      } catch {}
+    }, 400);
+    return () => clearTimeout(id);
+  }, [config]);
 
   function handleSave() {
     if (!config.appkey || !config.authkey) {
@@ -90,6 +99,8 @@ export default function WhatsAppSettings() {
           <div>
             <label className="mb-2 block text-sm font-medium">App Key</label>
             <Input
+              type="password"
+              autoComplete="off"
               value={config.appkey}
               onChange={(e) =>
                 setConfig((c) => ({ ...c, appkey: e.target.value }))
@@ -100,12 +111,30 @@ export default function WhatsAppSettings() {
           <div>
             <label className="mb-2 block text-sm font-medium">Auth Key</label>
             <Input
+              type="password"
+              autoComplete="off"
               value={config.authkey}
               onChange={(e) =>
                 setConfig((c) => ({ ...c, authkey: e.target.value }))
               }
               placeholder="your authkey"
             />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium">
+              Image Host URL
+            </label>
+            <Input
+              value={config.imageHost || ""}
+              onChange={(e) =>
+                setConfig((c) => ({ ...c, imageHost: e.target.value }))
+              }
+              placeholder="https://your-domain.com"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Optional. If set, generated image URLs will use this host instead
+              of the app origin.
+            </p>
           </div>
           <div>
             <label className="mb-2 block text-sm font-medium">

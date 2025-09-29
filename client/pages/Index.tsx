@@ -77,6 +77,13 @@ export default function Index() {
     return new Blob([byteArray], { type: mime });
   }
 
+  function formatTo(raw?: string | null) {
+    const digits = String(raw || "").replace(/\D+/g, "");
+    if (!digits) return "";
+    const last10 = digits.slice(-10);
+    return `91${last10}`;
+  }
+
   async function handleSendWhatsApp() {
     try {
       const cfg = loadWhatsConfig();
@@ -84,11 +91,12 @@ export default function Index() {
         toast.error("Set WhatsApp keys first in Settings (WhatsApp) page");
         return;
       }
-      const phone = summaryQuery.data?.details?.mobile1;
-      if (!phone) {
+      const rawPhone = summaryQuery.data?.details?.mobile1;
+      if (!rawPhone) {
         toast.error("No mobile number (BB) available");
         return;
       }
+      const to = formatTo(rawPhone);
       const dataUrl = await capturePngDataUrl();
       if (!dataUrl) return;
       const meta = parseMonthYear(
@@ -98,19 +106,45 @@ export default function Index() {
       const roll = summaryQuery.data!.employee.number;
       const message = `${month}-${roll}`;
 
-      const form = new FormData();
-      form.append("endpoint", cfg.endpoint);
-      form.append("appkey", cfg.appkey);
-      form.append("authkey", cfg.authkey);
-      form.append("to", phone);
-      form.append("message", message);
-      if (cfg.templateId) form.append("template_id", cfg.templateId);
-      // Send as data URL for server to generate a temporary public URL
-      form.append("imageDataUrl", dataUrl);
+      // First, get a temporary static URL for the image from the server
+      const uploadResp = await fetch("/api/whatsapp/image-url", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          imageDataUrl: dataUrl,
+          name: `${message}.png`,
+          publicBase: cfg.imageHost || undefined,
+        }),
+      });
+      const uploadJson = await uploadResp.json();
+      if (!uploadResp.ok || !uploadJson?.url) {
+        console.error(uploadJson);
+        toast.error("Failed to prepare image URL");
+        return;
+      }
+      let fileUrl: string = uploadJson.url;
+      if (cfg.imageHost) {
+        try {
+          const tempU = new URL(fileUrl);
+          const baseU = new URL(cfg.imageHost);
+          fileUrl = `${baseU.origin}${tempU.pathname}`;
+        } catch {}
+      }
+
+      const payload: any = {
+        endpoint: cfg.endpoint,
+        appkey: cfg.appkey,
+        authkey: cfg.authkey,
+        to,
+        message,
+        fileUrl,
+      };
+      if (cfg.templateId) payload.template_id = cfg.templateId;
 
       const resp = await fetch("/api/whatsapp/send", {
         method: "POST",
-        body: form,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
       });
       const j = await resp.json();
       if (!resp.ok) {

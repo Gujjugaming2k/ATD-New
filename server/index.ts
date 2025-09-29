@@ -12,6 +12,7 @@ import { whatsappRouter } from "./routes/whatsapp";
 const UPLOAD_DIR = path.resolve(process.cwd(), "server", "uploads");
 const TEMP_UPLOAD_DIR = path.resolve(process.cwd(), "server", "uploads_tmp");
 const MEDIA_SIGN_KEY = process.env.MEDIA_SIGN_KEY || "dev-secret";
+const MEDIA_URL_TTL_MS = Number(process.env.MEDIA_URL_TTL_MS || 5 * 60 * 1000);
 
 function ensureDir(p: string) {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
@@ -29,8 +30,8 @@ export function createServer() {
 
   // Middleware
   app.use(cors());
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
   // Health/demo routes
   app.get("/api/ping", (_req, res) => {
@@ -76,6 +77,29 @@ export function createServer() {
 
     res.sendFile(filePath);
   });
+
+  // Compact temporary URLs: /i/:id and /i/:id.:ext -> serves a short-named file "<ts>-<id>.<ext>" with TTL
+  const serveShort = (req: any, res: any) => {
+    const paramId = String(req.params.id || "");
+    const id = paramId.split(".")[0];
+    if (!id) return res.status(400).json({ error: "Missing id" });
+    const entries = fs.readdirSync(TEMP_UPLOAD_DIR);
+    const match = entries.find((name) => {
+      const m = name.match(/^(\d+)-([A-Za-z0-9_-]{4,})\.[^.]+$/);
+      return m && m[2] === id;
+    });
+    if (!match) return res.status(404).json({ error: "File not found" });
+    const ts = Number(match.split("-")[0]);
+    if (!Number.isFinite(ts))
+      return res.status(400).json({ error: "Invalid id" });
+    const now = Date.now();
+    if (now > ts + MEDIA_URL_TTL_MS)
+      return res.status(410).json({ error: "Link expired" });
+    const filePath = path.join(TEMP_UPLOAD_DIR, match);
+    res.sendFile(filePath);
+  };
+  app.get("/i/:id.:ext", serveShort);
+  app.get("/i/:id", serveShort);
 
   return app;
 }

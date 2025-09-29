@@ -36,6 +36,23 @@ function saveBufferToTemp(buffer: Buffer, originalName = "attendance.png") {
   return filename;
 }
 
+function randomId(len = 8) {
+  return crypto.randomBytes(len).toString("base64url").slice(0, len);
+}
+
+function saveBufferToShort(
+  buffer: Buffer,
+  opts?: { mime?: string; originalName?: string },
+) {
+  ensureTempDir();
+  const ext = (opts?.mime || "image/png").split("/")[1] || "png";
+  const id = randomId(8);
+  const filename = `${Date.now()}-${id}.${ext}`;
+  const full = path.join(TEMP_UPLOAD_DIR, filename);
+  fs.writeFileSync(full, buffer);
+  return { id, filename, ext };
+}
+
 function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mime: string } {
   const [meta, base64] = (dataUrl || "").split(",");
   const mimeMatch = /data:([^;]+);base64/.exec(meta || "");
@@ -102,55 +119,99 @@ async function postFormUrlEncoded(
   return { ok: resp.ok, status: resp.status, body: json } as const;
 }
 
-whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
+// New: create a temporary, signed public URL from a data URL (JSON payload)
+whatsappRouter.post("/image-url", async (req, res) => {
   try {
-    const { endpoint, appkey, authkey, to, message, imageDataUrl } =
-      req.body || {};
+    const originalName = (req.body?.name as string) || "attendance.png";
+    const imageDataUrl = String(req.body?.imageDataUrl || "");
+    if (!imageDataUrl.startsWith("data:")) {
+      return res.status(400).json({ error: "imageDataUrl is required" });
+    }
+    const d = dataUrlToBuffer(imageDataUrl);
+    const { id, ext } = saveBufferToShort(d.buffer, {
+      mime: d.mime,
+      originalName,
+    });
+    let base = getPublicBase(req);
+    const requested = String(req.body?.publicBase || "").trim();
+    if (requested) {
+      try {
+        const u = new URL(requested);
+        if (u.protocol === "http:" || u.protocol === "https:") base = u.origin;
+      } catch {}
+    }
+    const url = `${base}/i/${id}.${ext}`;
+    res.json({ url });
+  } catch (e: any) {
+    res
+      .status(500)
+      .json({
+        error: "Failed to create image URL",
+        detail: e?.message || String(e),
+      });
+  }
+});
+
+function formatTo91(raw: any) {
+  const digits = String(raw || "").replace(/\D+/g, "");
+  if (!digits) return "";
+  const last10 = digits.slice(-10);
+  return `91${last10}`;
+}
+
+// Send WhatsApp using provider that expects a URL-only 'file' parameter
+whatsappRouter.post("/send", upload.none(), async (req, res) => {
+  try {
+    const { endpoint, appkey, authkey, to, message } = req.body || {};
     if (!endpoint || !appkey || !authkey || !to || !message) {
       return res
         .status(400)
         .json({ error: "Missing endpoint/appkey/authkey/to/message" });
     }
 
-    let buffer: Buffer | null = null;
-    let originalName = "attendance.png";
-
-    if (req.file && req.file.buffer) {
-      buffer = Buffer.from(
-        req.file.buffer.buffer,
-        req.file.buffer.byteOffset,
-        req.file.buffer.byteLength,
-      );
-      originalName = req.file.originalname || originalName;
-    } else if (imageDataUrl) {
-      const d = dataUrlToBuffer(String(imageDataUrl));
-      buffer = d.buffer;
-    }
-
+    // Use provided fileUrl if given; otherwise allow legacy image inputs to generate a temp URL
     let tempUrl: string | undefined = undefined;
-    if (buffer) {
-      const filename = saveBufferToTemp(buffer, originalName);
-      const exp = Date.now() + MEDIA_TTL_MS;
-      const sig = signMedia(filename, String(exp));
-      const base = getPublicBase(req);
-      tempUrl = `${base}/uploads-temp/${exp}/${sig}/${encodeURIComponent(filename)}`;
+    const reqFileUrl = String((req.body as any)?.fileUrl || "").trim();
+    if (reqFileUrl && /^https?:\/\//i.test(reqFileUrl)) {
+      tempUrl = reqFileUrl;
+    } else {
+      let buffer: Buffer | null = null;
+      let originalName = "attendance.png";
+
+      if (req.file && req.file.buffer) {
+        buffer = Buffer.from(
+          req.file.buffer.buffer,
+          req.file.buffer.byteOffset,
+          req.file.buffer.byteLength,
+        );
+        originalName = req.file.originalname || originalName;
+      } else if ((req.body as any)?.imageDataUrl) {
+        const d = dataUrlToBuffer(String((req.body as any).imageDataUrl));
+        buffer = d.buffer;
+      }
+
+      if (buffer) {
+        const { id, ext } = saveBufferToShort(buffer, { originalName });
+        const base = getPublicBase(req);
+        tempUrl = `${base}/i/${id}.${ext}`;
+      }
     }
 
     const basePayload: any = {
       appkey: String(appkey),
       authkey: String(authkey),
-      to: String(to),
+      to: formatTo91(to),
       message: String(message),
     };
     if ((req.body as any)?.template_id)
       basePayload.template_id = String((req.body as any).template_id);
 
-    // Prefer sending x-www-form-urlencoded with URL in 'file'; never send multipart/binary
+    // Provider expects URL in 'file'
     const formPayload: Record<string, string> = { ...basePayload };
     if (tempUrl) formPayload.file = tempUrl;
+
     let result = await postFormUrlEncoded(String(endpoint), formPayload);
 
-    // Fallback to JSON with 'file' URL
     if (!result.ok) {
       const jsonPayload = tempUrl
         ? { ...basePayload, file: tempUrl }
