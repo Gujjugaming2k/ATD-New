@@ -1,6 +1,5 @@
 import { RequestHandler, Router } from "express";
 import multer from "multer";
-import FormData from "form-data";
 
 export const whatsappRouter = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -25,18 +24,15 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
     form.append("authkey", String(authkey));
     form.append("to", String(to));
     form.append("message", String(message));
+    if ((req.body as any)?.template_id) form.append("template_id", String((req.body as any).template_id));
 
     if (req.file && req.file.buffer) {
-      form.append("file", req.file.buffer, {
-        filename: req.file.originalname || "attendance.png",
-        contentType: req.file.mimetype || "image/png",
-      } as any);
+      const blob = new Blob([req.file.buffer], { type: req.file.mimetype || "image/png" });
+      form.append("file", blob, req.file.originalname || "attendance.png");
     } else if (imageDataUrl) {
       const { buffer, mime } = dataUrlToBuffer(String(imageDataUrl));
-      form.append("file", buffer, {
-        filename: "attendance.png",
-        contentType: mime,
-      } as any);
+      const blob = new Blob([buffer], { type: mime });
+      form.append("file", blob, "attendance.png");
     } else {
       return res.status(400).json({ error: "Missing file or imageDataUrl" });
     }
@@ -45,7 +41,6 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
     const resp = await fetch(target, {
       method: "POST",
       body: form as any,
-      headers: form.getHeaders(),
     });
 
     const text = await resp.text();
