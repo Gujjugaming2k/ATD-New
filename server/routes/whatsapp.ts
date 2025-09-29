@@ -126,15 +126,15 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
     const basePayload: any = { appkey: String(appkey), authkey: String(authkey), to: String(to), message: String(message) };
     if ((req.body as any)?.template_id) basePayload.template_id = String((req.body as any).template_id);
 
-    // Prefer sending a plain URL string in the 'file' field; never send binary
-    const jsonPayload = tempUrl ? { ...basePayload, file: tempUrl } : { ...basePayload };
-    let result = await postJson(String(endpoint), jsonPayload);
+    // Prefer sending x-www-form-urlencoded with URL in 'file'; never send multipart/binary
+    const formPayload: Record<string, string> = { ...basePayload };
+    if (tempUrl) formPayload.file = tempUrl;
+    let result = await postFormUrlEncoded(String(endpoint), formPayload);
 
+    // Fallback to JSON with 'file' URL
     if (!result.ok) {
-      // Fallback to x-www-form-urlencoded with 'file' as URL if available
-      const formPayload: Record<string, string> = { ...basePayload };
-      if (tempUrl) formPayload.file = tempUrl;
-      result = await postFormUrlEncoded(String(endpoint), formPayload);
+      const jsonPayload = tempUrl ? { ...basePayload, file: tempUrl } : { ...basePayload };
+      result = await postJson(String(endpoint), jsonPayload);
     }
 
     if (!result.ok) {
