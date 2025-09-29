@@ -72,17 +72,20 @@ export default function Index() {
       const roll = summaryQuery.data!.employee.number;
       const message = `${month}-${roll}`;
 
+      // convert dataUrl to blob
+      const resBlob = await fetch(dataUrl);
+      const blob = await resBlob.blob();
+      const form = new FormData();
+      form.append("endpoint", cfg.endpoint);
+      form.append("appkey", cfg.appkey);
+      form.append("authkey", cfg.authkey);
+      form.append("to", phone);
+      form.append("message", message);
+      form.append("file", blob, "attendance.png");
+
       const resp = await fetch("/api/whatsapp/send", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          endpoint: cfg.endpoint,
-          appkey: cfg.appkey,
-          authkey: cfg.authkey,
-          to: phone,
-          message,
-          imageDataUrl: dataUrl,
-        }),
+        body: form,
       });
       const j = await resp.json();
       if (!resp.ok) {
