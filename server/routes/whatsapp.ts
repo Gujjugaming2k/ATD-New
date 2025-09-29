@@ -50,7 +50,7 @@ function saveBufferToShort(
   const filename = `${Date.now()}-${id}.${ext}`;
   const full = path.join(TEMP_UPLOAD_DIR, filename);
   fs.writeFileSync(full, buffer);
-  return { id, filename };
+  return { id, filename, ext };
 }
 
 function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mime: string } {
@@ -128,7 +128,7 @@ whatsappRouter.post("/image-url", async (req, res) => {
       return res.status(400).json({ error: "imageDataUrl is required" });
     }
     const d = dataUrlToBuffer(imageDataUrl);
-    const { id } = saveBufferToShort(d.buffer, { mime: d.mime, originalName });
+    const { id, ext } = saveBufferToShort(d.buffer, { mime: d.mime, originalName });
     let base = getPublicBase(req);
     const requested = String(req.body?.publicBase || "").trim();
     if (requested) {
@@ -137,7 +137,7 @@ whatsappRouter.post("/image-url", async (req, res) => {
         if (u.protocol === "http:" || u.protocol === "https:") base = u.origin;
       } catch {}
     }
-    const url = `${base}/i/${id}`;
+    const url = `${base}/i/${id}.${ext}`;
     res.json({ url });
   } catch (e: any) {
     res
@@ -178,9 +178,9 @@ whatsappRouter.post("/send", upload.none(), async (req, res) => {
       }
 
       if (buffer) {
-        const { id } = saveBufferToShort(buffer, { originalName });
+        const { id, ext } = saveBufferToShort(buffer, { originalName });
         const base = getPublicBase(req);
-        tempUrl = `${base}/i/${id}`;
+        tempUrl = `${base}/i/${id}.${ext}`;
       }
     }
 
