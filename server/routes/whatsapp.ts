@@ -102,18 +102,11 @@ async function postFormUrlEncoded(
   return { ok: resp.ok, status: resp.status, body: json } as const;
 }
 
-whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
+// New: create a temporary, signed public URL for an uploaded image
+whatsappRouter.post("/image-url", upload.single("file"), async (req, res) => {
   try {
-    const { endpoint, appkey, authkey, to, message, imageDataUrl } =
-      req.body || {};
-    if (!endpoint || !appkey || !authkey || !to || !message) {
-      return res
-        .status(400)
-        .json({ error: "Missing endpoint/appkey/authkey/to/message" });
-    }
-
     let buffer: Buffer | null = null;
-    let originalName = "attendance.png";
+    let originalName = (req.body?.name as string) || "attendance.png";
 
     if (req.file && req.file.buffer) {
       buffer = Buffer.from(
@@ -122,18 +115,67 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
         req.file.buffer.byteLength,
       );
       originalName = req.file.originalname || originalName;
-    } else if (imageDataUrl) {
-      const d = dataUrlToBuffer(String(imageDataUrl));
+    } else if (req.body?.imageDataUrl) {
+      const d = dataUrlToBuffer(String(req.body.imageDataUrl));
       buffer = d.buffer;
     }
 
+    if (!buffer) {
+      return res.status(400).json({ error: "No image provided" });
+    }
+
+    const filename = saveBufferToTemp(buffer, originalName);
+    const exp = Date.now() + MEDIA_TTL_MS;
+    const sig = signMedia(filename, String(exp));
+    const base = getPublicBase(req);
+    const url = `${base}/uploads-temp/${exp}/${sig}/${encodeURIComponent(filename)}`;
+
+    res.json({ url, expiresAt: exp });
+  } catch (e: any) {
+    res
+      .status(500)
+      .json({ error: "Failed to create image URL", detail: e?.message || String(e) });
+  }
+});
+
+// Send WhatsApp using provider that expects a URL-only 'file' parameter
+whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
+  try {
+    const { endpoint, appkey, authkey, to, message } = req.body || {};
+    if (!endpoint || !appkey || !authkey || !to || !message) {
+      return res
+        .status(400)
+        .json({ error: "Missing endpoint/appkey/authkey/to/message" });
+    }
+
+    // Use provided fileUrl if given; otherwise allow legacy image inputs to generate a temp URL
     let tempUrl: string | undefined = undefined;
-    if (buffer) {
-      const filename = saveBufferToTemp(buffer, originalName);
-      const exp = Date.now() + MEDIA_TTL_MS;
-      const sig = signMedia(filename, String(exp));
-      const base = getPublicBase(req);
-      tempUrl = `${base}/uploads-temp/${exp}/${sig}/${encodeURIComponent(filename)}`;
+    const reqFileUrl = String((req.body as any)?.fileUrl || "").trim();
+    if (reqFileUrl && /^https?:\/\//i.test(reqFileUrl)) {
+      tempUrl = reqFileUrl;
+    } else {
+      let buffer: Buffer | null = null;
+      let originalName = "attendance.png";
+
+      if (req.file && req.file.buffer) {
+        buffer = Buffer.from(
+          req.file.buffer.buffer,
+          req.file.buffer.byteOffset,
+          req.file.buffer.byteLength,
+        );
+        originalName = req.file.originalname || originalName;
+      } else if ((req.body as any)?.imageDataUrl) {
+        const d = dataUrlToBuffer(String((req.body as any).imageDataUrl));
+        buffer = d.buffer;
+      }
+
+      if (buffer) {
+        const filename = saveBufferToTemp(buffer, originalName);
+        const exp = Date.now() + MEDIA_TTL_MS;
+        const sig = signMedia(filename, String(exp));
+        const base = getPublicBase(req);
+        tempUrl = `${base}/uploads-temp/${exp}/${sig}/${encodeURIComponent(filename)}`;
+      }
     }
 
     const basePayload: any = {
@@ -145,12 +187,12 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
     if ((req.body as any)?.template_id)
       basePayload.template_id = String((req.body as any).template_id);
 
-    // Prefer sending x-www-form-urlencoded with URL in 'file'; never send multipart/binary
+    // Provider expects URL in 'file'
     const formPayload: Record<string, string> = { ...basePayload };
     if (tempUrl) formPayload.file = tempUrl;
+
     let result = await postFormUrlEncoded(String(endpoint), formPayload);
 
-    // Fallback to JSON with 'file' URL
     if (!result.ok) {
       const jsonPayload = tempUrl
         ? { ...basePayload, file: tempUrl }
@@ -168,9 +210,6 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
   } catch (e: any) {
     res
       .status(500)
-      .json({
-        error: "Failed to send WhatsApp",
-        detail: e?.message || String(e),
-      });
+      .json({ error: "Failed to send WhatsApp", detail: e?.message || String(e) });
   }
 });
