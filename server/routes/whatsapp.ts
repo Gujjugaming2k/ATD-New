@@ -146,6 +146,13 @@ whatsappRouter.post("/image-url", async (req, res) => {
   }
 });
 
+function formatTo91(raw: any) {
+  const digits = String(raw || "").replace(/\D+/g, "");
+  if (!digits) return "";
+  const last10 = digits.slice(-10);
+  return `91${last10}`;
+}
+
 // Send WhatsApp using provider that expects a URL-only 'file' parameter
 whatsappRouter.post("/send", upload.none(), async (req, res) => {
   try {
@@ -187,7 +194,7 @@ whatsappRouter.post("/send", upload.none(), async (req, res) => {
     const basePayload: any = {
       appkey: String(appkey),
       authkey: String(authkey),
-      to: String(to),
+      to: formatTo91(to),
       message: String(message),
     };
     if ((req.body as any)?.template_id)
