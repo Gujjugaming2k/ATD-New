@@ -94,6 +94,7 @@ export default function Index() {
       form.append("authkey", cfg.authkey);
       form.append("to", phone);
       form.append("message", message);
+      if (cfg.templateId) form.append("template_id", cfg.templateId);
       form.append("file", blob, "attendance.png");
 
       const resp = await fetch("/api/whatsapp/send", {
