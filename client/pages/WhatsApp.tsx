@@ -10,20 +10,22 @@ type WhatsAppConfig = {
   endpoint: string;
   appkey: string;
   authkey: string;
+  templateId?: string;
 };
 
 function loadConfig(): WhatsAppConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { endpoint: "https://whatsapp.atdsonata.fun/api/create-message", appkey: "", authkey: "" };
+    if (!raw) return { endpoint: "https://whatsapp.atdsonata.fun/api/create-message", appkey: "", authkey: "", templateId: "" };
     const parsed = JSON.parse(raw);
     return {
       endpoint: parsed.endpoint || "https://whatsapp.atdsonata.fun/api/create-message",
       appkey: parsed.appkey || "",
       authkey: parsed.authkey || "",
+      templateId: parsed.templateId || "",
     };
   } catch {
-    return { endpoint: "https://whatsapp.atdsonata.fun/api/create-message", appkey: "", authkey: "" };
+    return { endpoint: "https://whatsapp.atdsonata.fun/api/create-message", appkey: "", authkey: "", templateId: "" };
   }
 }
 
@@ -81,6 +83,14 @@ export default function WhatsAppSettings() {
               value={config.authkey}
               onChange={(e) => setConfig((c) => ({ ...c, authkey: e.target.value }))}
               placeholder="your authkey"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium">Template ID (optional)</label>
+            <Input
+              value={config.templateId || ""}
+              onChange={(e) => setConfig((c) => ({ ...c, templateId: e.target.value }))}
+              placeholder="e.g. 1234 (if your provider requires it)"
             />
           </div>
           <div className="pt-2">
