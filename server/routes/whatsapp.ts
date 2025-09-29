@@ -7,14 +7,14 @@ import crypto from "crypto";
 export const whatsappRouter = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-const UPLOAD_DIR = path.resolve(process.cwd(), "server", "uploads");
+const TEMP_UPLOAD_DIR = path.resolve(process.cwd(), "server", "uploads_tmp");
 const MEDIA_SIGN_KEY = process.env.MEDIA_SIGN_KEY || "dev-secret";
 const MEDIA_TTL_MS = Number(process.env.MEDIA_URL_TTL_MS || 5 * 60 * 1000);
 const MEDIA_PUBLIC_BASE = process.env.MEDIA_PUBLIC_BASE || ""; // e.g. https://your-domain.com
 
-function ensureUploadDir() {
-  if (!fs.existsSync(UPLOAD_DIR)) {
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+function ensureTempDir() {
+  if (!fs.existsSync(TEMP_UPLOAD_DIR)) {
+    fs.mkdirSync(TEMP_UPLOAD_DIR, { recursive: true });
   }
 }
 
@@ -28,10 +28,10 @@ function timestampedName(originalName: string) {
   return `${ts}__${safe}`;
 }
 
-function saveBufferToUploads(buffer: Buffer, originalName = "attendance.png") {
-  ensureUploadDir();
+function saveBufferToTemp(buffer: Buffer, originalName = "attendance.png") {
+  ensureTempDir();
   const filename = timestampedName(originalName);
-  const full = path.join(UPLOAD_DIR, filename);
+  const full = path.join(TEMP_UPLOAD_DIR, filename);
   fs.writeFileSync(full, buffer);
   return filename;
 }
@@ -116,11 +116,11 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
 
     let tempUrl: string | undefined = undefined;
     if (buffer) {
-      const filename = saveBufferToUploads(buffer, originalName);
+      const filename = saveBufferToTemp(buffer, originalName);
       const exp = Date.now() + MEDIA_TTL_MS;
       const sig = signMedia(filename, String(exp));
       const base = getPublicBase(req);
-      tempUrl = `${base}/uploads-temp/${encodeURIComponent(filename)}?exp=${exp}&sig=${sig}`;
+      tempUrl = `${base}/uploads-temp/${exp}/${sig}/${encodeURIComponent(filename)}`;
     }
 
     const basePayload: any = { appkey: String(appkey), authkey: String(authkey), to: String(to), message: String(message) };
