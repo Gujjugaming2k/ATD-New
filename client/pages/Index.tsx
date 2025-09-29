@@ -77,6 +77,13 @@ export default function Index() {
     return new Blob([byteArray], { type: mime });
   }
 
+  function formatTo(raw?: string | null) {
+    const digits = String(raw || "").replace(/\D+/g, "");
+    if (!digits) return "";
+    const last10 = digits.slice(-10);
+    return `91${last10}`;
+  }
+
   async function handleSendWhatsApp() {
     try {
       const cfg = loadWhatsConfig();
@@ -84,11 +91,12 @@ export default function Index() {
         toast.error("Set WhatsApp keys first in Settings (WhatsApp) page");
         return;
       }
-      const phone = summaryQuery.data?.details?.mobile1;
-      if (!phone) {
+      const rawPhone = summaryQuery.data?.details?.mobile1;
+      if (!rawPhone) {
         toast.error("No mobile number (BB) available");
         return;
       }
+      const to = formatTo(rawPhone);
       const dataUrl = await capturePngDataUrl();
       if (!dataUrl) return;
       const meta = parseMonthYear(
@@ -123,7 +131,7 @@ export default function Index() {
         endpoint: cfg.endpoint,
         appkey: cfg.appkey,
         authkey: cfg.authkey,
-        to: phone,
+        to,
         message,
         fileUrl,
       };
