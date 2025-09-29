@@ -2,11 +2,14 @@ import { Router } from "express";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 
 export const whatsappRouter = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 const UPLOAD_DIR = path.resolve(process.cwd(), "server", "uploads");
+const MEDIA_SIGN_KEY = process.env.MEDIA_SIGN_KEY || "dev-secret";
+const MEDIA_TTL_MS = Number(process.env.MEDIA_URL_TTL_MS || 5 * 60 * 1000);
 
 function ensureUploadDir() {
   if (!fs.existsSync(UPLOAD_DIR)) {
@@ -48,6 +51,10 @@ function getOrigin(req: any) {
   return `${protocol}://${host}`;
 }
 
+function signMedia(filename: string, exp: string) {
+  return crypto.createHmac("sha256", MEDIA_SIGN_KEY).update(`${filename}:${exp}`).digest("hex");
+}
+
 async function tryJson(target: string, payload: any) {
   const resp = await fetch(target, {
     method: "POST",
@@ -71,8 +78,8 @@ async function tryMultipartWithUrl(target: string, payload: any, fileUrl: string
   form.append("to", String(payload.to));
   form.append("message", String(payload.message));
   if (payload.template_id) form.append("template_id", String(payload.template_id));
-  // Some providers accept file URL in a field instead of binary
-  form.append("file_url", String(fileUrl));
+  // Provider expects the URL in the 'file' field
+  form.append("file", String(fileUrl));
   const resp = await fetch(target, { method: "POST", body: form as any });
   const text = await resp.text();
   let json: any = null;
@@ -126,28 +133,25 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
       mime = d.mime;
     }
 
-    // If we have an image, host it and send its URL; otherwise send text-only
-    let fileUrl: string | undefined = undefined;
+    // If image present, create a signed, temporary URL; else send text-only
+    let tempUrl: string | undefined = undefined;
     if (buffer) {
       const filename = saveBufferToUploads(buffer, originalName);
-      fileUrl = `${getOrigin(req)}/uploads/${encodeURIComponent(filename)}`;
+      const exp = Date.now() + MEDIA_TTL_MS;
+      const sig = signMedia(filename, String(exp));
+      tempUrl = `${getOrigin(req)}/uploads-temp/${encodeURIComponent(filename)}?exp=${exp}&sig=${sig}`;
     }
 
-    const basePayload: any = {
-      appkey,
-      authkey,
-      to,
-      message,
-    };
+    const basePayload: any = { appkey, authkey, to, message };
     if ((req.body as any)?.template_id) basePayload.template_id = String((req.body as any).template_id);
 
-    // 1) Try JSON: with file_url when available, else text-only
-    const jsonPayload = fileUrl ? { ...basePayload, file_url: fileUrl } : { ...basePayload };
+    // 1) Prefer JSON with 'file' as URL when present
+    const jsonPayload = tempUrl ? { ...basePayload, file: tempUrl } : { ...basePayload };
     let result = await tryJson(String(endpoint), jsonPayload);
 
-    // 2) If failed and we had file URL, try multipart with URL field
-    if (!result.ok && fileUrl) {
-      result = await tryMultipartWithUrl(String(endpoint), basePayload, fileUrl);
+    // 2) If failed and we had URL, try multipart with URL in 'file'
+    if (!result.ok && tempUrl) {
+      result = await tryMultipartWithUrl(String(endpoint), basePayload, tempUrl);
     }
 
     // 3) If still failed and we have the binary buffer, try multipart with real file
@@ -155,8 +159,8 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
       result = await tryMultipartWithBinary(String(endpoint), basePayload, buffer, mime, originalName);
     }
 
-    // 4) As last resort, try pure text-only JSON (some providers reject when file provided)
-    if (!result.ok && fileUrl) {
+    // 4) As last resort, try pure text-only JSON
+    if (!result.ok && tempUrl) {
       result = await tryJson(String(endpoint), { ...basePayload });
     }
 
