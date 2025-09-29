@@ -10,3 +10,38 @@
 export interface DemoResponse {
   message: string;
 }
+
+// Attendance domain types
+export interface UploadedFile {
+  filename: string; // stored filename on server
+  originalName: string; // original uploaded filename
+  size: number; // bytes
+  uploadedAt: string; // ISO string
+}
+
+export interface FilesListResponse {
+  files: UploadedFile[];
+}
+
+export interface Employee {
+  number: string;
+  name: string;
+}
+
+export interface EmployeesResponse {
+  file: string;
+  employees: Employee[];
+}
+
+export interface AttendanceSummary {
+  present: number;
+  absent: number;
+  weekoff: number;
+  otHours: number; // total OT hours, if present in sheet
+}
+
+export interface AttendanceResponse {
+  file: string;
+  employee: Employee;
+  summary: AttendanceSummary;
+}
