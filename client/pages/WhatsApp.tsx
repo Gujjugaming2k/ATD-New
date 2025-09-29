@@ -49,8 +49,13 @@ export default function WhatsAppSettings() {
   const [config, setConfig] = useState<WhatsAppConfig>(() => loadConfig());
 
   useEffect(() => {
-    // noop, initial load handled in useState initializer
-  }, []);
+    const id = setTimeout(() => {
+      try {
+        saveConfig(config);
+      } catch {}
+    }, 400);
+    return () => clearTimeout(id);
+  }, [config]);
 
   function handleSave() {
     if (!config.appkey || !config.authkey) {
@@ -90,6 +95,8 @@ export default function WhatsAppSettings() {
           <div>
             <label className="mb-2 block text-sm font-medium">App Key</label>
             <Input
+              type="password"
+              autoComplete="off"
               value={config.appkey}
               onChange={(e) =>
                 setConfig((c) => ({ ...c, appkey: e.target.value }))
@@ -100,6 +107,8 @@ export default function WhatsAppSettings() {
           <div>
             <label className="mb-2 block text-sm font-medium">Auth Key</label>
             <Input
+              type="password"
+              autoComplete="off"
               value={config.authkey}
               onChange={(e) =>
                 setConfig((c) => ({ ...c, authkey: e.target.value }))
