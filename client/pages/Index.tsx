@@ -98,7 +98,6 @@ export default function Index() {
       const roll = summaryQuery.data!.employee.number;
       const message = `${month}-${roll}`;
 
-      const blob = dataUrlToBlob(dataUrl);
       const form = new FormData();
       form.append("endpoint", cfg.endpoint);
       form.append("appkey", cfg.appkey);
@@ -106,7 +105,8 @@ export default function Index() {
       form.append("to", phone);
       form.append("message", message);
       if (cfg.templateId) form.append("template_id", cfg.templateId);
-      form.append("file", blob, "attendance.png");
+      // Send as data URL for server to generate a temporary public URL
+      form.append("imageDataUrl", dataUrl);
 
       const resp = await fetch("/api/whatsapp/send", {
         method: "POST",
