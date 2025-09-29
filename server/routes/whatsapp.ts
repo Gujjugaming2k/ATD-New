@@ -10,6 +10,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 const UPLOAD_DIR = path.resolve(process.cwd(), "server", "uploads");
 const MEDIA_SIGN_KEY = process.env.MEDIA_SIGN_KEY || "dev-secret";
 const MEDIA_TTL_MS = Number(process.env.MEDIA_URL_TTL_MS || 5 * 60 * 1000);
+const MEDIA_PUBLIC_BASE = process.env.MEDIA_PUBLIC_BASE || ""; // e.g. https://your-domain.com
 
 function ensureUploadDir() {
   if (!fs.existsSync(UPLOAD_DIR)) {
@@ -51,11 +52,17 @@ function getOrigin(req: any) {
   return `${protocol}://${host}`;
 }
 
+function getPublicBase(req: any) {
+  const base = MEDIA_PUBLIC_BASE.trim();
+  if (base) return base.replace(/\/$/, "");
+  return getOrigin(req);
+}
+
 function signMedia(filename: string, exp: string) {
   return crypto.createHmac("sha256", MEDIA_SIGN_KEY).update(`${filename}:${exp}`).digest("hex");
 }
 
-async function tryJson(target: string, payload: any) {
+async function postJson(target: string, payload: any) {
   const resp = await fetch(target, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -71,37 +78,14 @@ async function tryJson(target: string, payload: any) {
   return { ok: resp.ok, status: resp.status, body: json } as const;
 }
 
-async function tryMultipartWithUrl(target: string, payload: any, fileUrl: string) {
-  const form = new FormData();
-  form.append("appkey", String(payload.appkey));
-  form.append("authkey", String(payload.authkey));
-  form.append("to", String(payload.to));
-  form.append("message", String(payload.message));
-  if (payload.template_id) form.append("template_id", String(payload.template_id));
-  // Provider expects the URL in the 'file' field
-  form.append("file", String(fileUrl));
-  const resp = await fetch(target, { method: "POST", body: form as any });
-  const text = await resp.text();
-  let json: any = null;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    json = { raw: text };
-  }
-  return { ok: resp.ok, status: resp.status, body: json } as const;
-}
-
-async function tryMultipartWithBinary(target: string, payload: any, buffer: Buffer, mime = "image/png", filename = "attendance.png") {
-  const u8 = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-  const blob = new Blob([u8], { type: mime });
-  const form = new FormData();
-  form.append("appkey", String(payload.appkey));
-  form.append("authkey", String(payload.authkey));
-  form.append("to", String(payload.to));
-  form.append("message", String(payload.message));
-  if (payload.template_id) form.append("template_id", String(payload.template_id));
-  form.append("file", blob, filename);
-  const resp = await fetch(target, { method: "POST", body: form as any });
+async function postFormUrlEncoded(target: string, payload: Record<string, string>) {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(payload)) params.append(k, v);
+  const resp = await fetch(target, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: params.toString(),
+  });
   const text = await resp.text();
   let json: any = null;
   try {
@@ -121,47 +105,36 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
 
     let buffer: Buffer | null = null;
     let originalName = "attendance.png";
-    let mime: string | undefined = undefined;
 
     if (req.file && req.file.buffer) {
       buffer = Buffer.from(req.file.buffer.buffer, req.file.buffer.byteOffset, req.file.buffer.byteLength);
       originalName = req.file.originalname || originalName;
-      mime = req.file.mimetype || "image/png";
     } else if (imageDataUrl) {
       const d = dataUrlToBuffer(String(imageDataUrl));
       buffer = d.buffer;
-      mime = d.mime;
     }
 
-    // If image present, create a signed, temporary URL; else send text-only
     let tempUrl: string | undefined = undefined;
     if (buffer) {
       const filename = saveBufferToUploads(buffer, originalName);
       const exp = Date.now() + MEDIA_TTL_MS;
       const sig = signMedia(filename, String(exp));
-      tempUrl = `${getOrigin(req)}/uploads-temp/${encodeURIComponent(filename)}?exp=${exp}&sig=${sig}`;
+      const base = getPublicBase(req);
+      tempUrl = `${base}/uploads-temp/${encodeURIComponent(filename)}?exp=${exp}&sig=${sig}`;
     }
 
-    const basePayload: any = { appkey, authkey, to, message };
+    const basePayload: any = { appkey: String(appkey), authkey: String(authkey), to: String(to), message: String(message) };
     if ((req.body as any)?.template_id) basePayload.template_id = String((req.body as any).template_id);
 
-    // 1) Prefer JSON with 'file' as URL when present
+    // Prefer sending a plain URL string in the 'file' field; never send binary
     const jsonPayload = tempUrl ? { ...basePayload, file: tempUrl } : { ...basePayload };
-    let result = await tryJson(String(endpoint), jsonPayload);
+    let result = await postJson(String(endpoint), jsonPayload);
 
-    // 2) If failed and we had URL, try multipart with URL in 'file'
-    if (!result.ok && tempUrl) {
-      result = await tryMultipartWithUrl(String(endpoint), basePayload, tempUrl);
-    }
-
-    // 3) If still failed and we have the binary buffer, try multipart with real file
-    if (!result.ok && buffer) {
-      result = await tryMultipartWithBinary(String(endpoint), basePayload, buffer, mime, originalName);
-    }
-
-    // 4) As last resort, try pure text-only JSON
-    if (!result.ok && tempUrl) {
-      result = await tryJson(String(endpoint), { ...basePayload });
+    if (!result.ok) {
+      // Fallback to x-www-form-urlencoded with 'file' as URL if available
+      const formPayload: Record<string, string> = { ...basePayload };
+      if (tempUrl) formPayload.file = tempUrl;
+      result = await postFormUrlEncoded(String(endpoint), formPayload);
     }
 
     if (!result.ok) {
