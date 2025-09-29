@@ -38,12 +38,22 @@ export interface AttendanceSummary {
   absent: number;
   weekoff: number;
   otHours: number; // total OT hours, if present in sheet
+  atd: number; // present + weekoff
+  minus?: number; // from AN
+  kitchen?: number; // from AQ
+}
+
+export interface EmployeeDetails {
+  mobile1?: string; // from BB
+  mobile2?: string; // from BC
+  presentAddress?: string; // from BR
 }
 
 export interface AttendanceResponse {
   file: string;
   employee: Employee;
   summary: AttendanceSummary;
+  details?: EmployeeDetails;
 }
 
 export interface DayStatus {
@@ -56,4 +66,5 @@ export interface DailyAttendanceResponse {
   file: string;
   employee: Employee;
   days: DayStatus[];
+  details?: EmployeeDetails;
 }
