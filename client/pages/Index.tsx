@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AttendanceResponse, EmployeesResponse, FilesListResponse } from "@shared/api";
+import { AttendanceResponse, EmployeesResponse, FilesListResponse, DailyAttendanceResponse } from "@shared/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,19 @@ export default function Index() {
       if (selectedName) params.set("name", selectedName);
       const res = await fetch(`/api/attendance/summary?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch summary");
+      return res.json();
+    },
+  });
+
+  const dailyQuery = useQuery({
+    queryKey: ["daily", file, selectedNumber, selectedName],
+    enabled: !!file && (!!selectedNumber || !!selectedName),
+    queryFn: async (): Promise<DailyAttendanceResponse> => {
+      const params = new URLSearchParams({ file: file! });
+      if (selectedNumber) params.set("number", selectedNumber);
+      if (selectedName) params.set("name", selectedName);
+      const res = await fetch(`/api/attendance/daily?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch daily attendance");
       return res.json();
     },
   });
@@ -121,6 +134,31 @@ export default function Index() {
               <StatCard title="Absent" value={summaryQuery.data.summary.absent} color="bg-rose-500" />
               <StatCard title="Weekoff" value={summaryQuery.data.summary.weekoff} color="bg-amber-500" />
               <StatCard title="OT Hours" value={summaryQuery.data.summary.otHours} color="bg-cyan-500" />
+            </div>
+          )}
+
+          {dailyQuery.data && (
+            <div className="mt-6">
+              <h3 className="mb-3 text-sm font-medium text-muted-foreground">Date-wise Attendance</h3>
+              <div className="grid grid-cols-7 gap-2">
+                {dailyQuery.data.days.map((d) => {
+                  const color = d.code === "P" ? "bg-emerald-500/15 text-emerald-700 border-emerald-300/50"
+                    : d.code === "A" ? "bg-rose-500/15 text-rose-700 border-rose-300/50"
+                    : d.code === "WO" ? "bg-amber-500/15 text-amber-700 border-amber-300/50"
+                    : "bg-muted text-foreground/60 border-muted";
+                  return (
+                    <div key={d.day} className={`rounded-md border p-2 text-center text-sm ${color}`}>
+                      <div className="font-semibold">{d.day}</div>
+                      <div className="text-xs">{d.code || ""}{d.ot ? ` • OT ${d.ot}` : ""}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-emerald-500/60 inline-block"/> Present</div>
+                <div className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-rose-500/60 inline-block"/> Absent</div>
+                <div className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-amber-500/60 inline-block"/> Weekoff</div>
+              </div>
             </div>
           )}
 
