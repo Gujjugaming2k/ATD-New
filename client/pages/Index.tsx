@@ -105,8 +105,9 @@ export default function Index() {
       form.append("to", phone);
       form.append("message", message);
       if (cfg.templateId) form.append("template_id", cfg.templateId);
-      // Send as data URL for server to generate a temporary public URL
-      form.append("imageDataUrl", dataUrl);
+      // Send as file blob for server to generate a temporary public URL
+      const blob = dataUrlToBlob(dataUrl);
+      form.append("file", blob, `${message}.png`);
 
       const resp = await fetch("/api/whatsapp/send", {
         method: "POST",
