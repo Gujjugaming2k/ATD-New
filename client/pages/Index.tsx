@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toPng } from "html-to-image";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,73 @@ import {
 
 export default function Index() {
   const captureRef = useRef<HTMLDivElement | null>(null);
+
+  function loadWhatsConfig() {
+    try {
+      const raw = localStorage.getItem("whatsappConfig");
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      if (!p.appkey || !p.authkey || !p.endpoint) return null;
+      return p as { appkey: string; authkey: string; endpoint: string };
+    } catch {
+      return null;
+    }
+  }
+
+  async function capturePngDataUrl() {
+    if (!captureRef.current) return null as string | null;
+    const node = captureRef.current;
+    const dataUrl = await toPng(node, {
+      cacheBust: true,
+      pixelRatio: Math.min(window.devicePixelRatio || 2, 3),
+      backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--background") ? undefined : "white",
+    });
+    return dataUrl;
+  }
+
+  async function handleSendWhatsApp() {
+    try {
+      const cfg = loadWhatsConfig();
+      if (!cfg) {
+        toast.error("Set WhatsApp keys first in Settings (WhatsApp) page");
+        return;
+      }
+      const phone = summaryQuery.data?.details?.mobile1;
+      if (!phone) {
+        toast.error("No mobile number (BB) available");
+        return;
+      }
+      const dataUrl = await capturePngDataUrl();
+      if (!dataUrl) return;
+      const meta = parseMonthYear(files.find((f) => f.filename === file)?.originalName);
+      const month = meta?.label || "Month";
+      const roll = summaryQuery.data!.employee.number;
+      const message = `${month}-${roll}`;
+
+      const resp = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          endpoint: cfg.endpoint,
+          appkey: cfg.appkey,
+          authkey: cfg.authkey,
+          to: phone,
+          message,
+          imageDataUrl: dataUrl,
+        }),
+      });
+      const j = await resp.json();
+      if (!resp.ok) {
+        console.error(j);
+        toast.error("Failed to send on WhatsApp");
+        return;
+      }
+      toast.success("Sent on WhatsApp");
+    } catch (e) {
+      console.error(e);
+      toast.error("Error sending on WhatsApp");
+    }
+  }
 
   async function handleDownload() {
     if (!captureRef.current) return;
@@ -135,14 +203,19 @@ export default function Index() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Search Employee</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownload}
-            disabled={!summaryQuery.data}
-          >
-            Download
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+              disabled={!summaryQuery.data}
+            >
+              Download
+            </Button>
+            <Button size="sm" onClick={handleSendWhatsApp} disabled={!summaryQuery.data}>
+              Send WhatsApp
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">

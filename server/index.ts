@@ -5,6 +5,7 @@ import path from "path";
 import { handleDemo } from "./routes/demo";
 import { filesRouter } from "./routes/files";
 import { attendanceRouter } from "./routes/attendance";
+import { whatsappRouter } from "./routes/whatsapp";
 
 export function createServer() {
   const app = express();
@@ -25,6 +26,8 @@ export function createServer() {
   app.use("/api/files", filesRouter);
   // Attendance APIs
   app.use("/api/attendance", attendanceRouter);
+  // WhatsApp APIs
+  app.use("/api/whatsapp", whatsappRouter);
 
   // Optional: serve uploaded files statically (read-only)
   app.use(
