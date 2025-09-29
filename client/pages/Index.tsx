@@ -98,6 +98,19 @@ export default function Index() {
       const roll = summaryQuery.data!.employee.number;
       const message = `${month}-${roll}`;
 
+      // First, get a temporary static URL for the image from the server
+      const uploadResp = await fetch("/api/whatsapp/image-url", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ imageDataUrl: dataUrl, name: `${message}.png` }),
+      });
+      const uploadJson = await uploadResp.json();
+      if (!uploadResp.ok || !uploadJson?.url) {
+        console.error(uploadJson);
+        toast.error("Failed to prepare image URL");
+        return;
+      }
+
       const form = new FormData();
       form.append("endpoint", cfg.endpoint);
       form.append("appkey", cfg.appkey);
@@ -105,8 +118,7 @@ export default function Index() {
       form.append("to", phone);
       form.append("message", message);
       if (cfg.templateId) form.append("template_id", cfg.templateId);
-      // Send as data URL; server will generate a temporary static URL and forward only the URL
-      form.append("imageDataUrl", dataUrl);
+      form.append("fileUrl", uploadJson.url);
 
       const resp = await fetch("/api/whatsapp/send", {
         method: "POST",
