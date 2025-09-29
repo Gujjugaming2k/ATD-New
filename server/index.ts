@@ -78,8 +78,8 @@ export function createServer() {
     res.sendFile(filePath);
   });
 
-  // Compact temporary URLs: /i/:id -> serves a short-named file "<ts>-<id>.<ext>" with TTL
-  app.get("/i/:id", (req, res) => {
+  // Compact temporary URLs: /i/:id and /i/:id.:ext -> serves a short-named file "<ts>-<id>.<ext>" with TTL
+  const serveShort = (req: any, res: any) => {
     const id = String(req.params.id || "");
     if (!id) return res.status(400).json({ error: "Missing id" });
     const entries = fs.readdirSync(TEMP_UPLOAD_DIR);
@@ -94,7 +94,9 @@ export function createServer() {
     if (now > ts + MEDIA_URL_TTL_MS) return res.status(410).json({ error: "Link expired" });
     const filePath = path.join(TEMP_UPLOAD_DIR, match);
     res.sendFile(filePath);
-  });
+  };
+  app.get("/i/:id", serveShort);
+  app.get("/i/:id.:ext", serveShort);
 
   return app;
 }
