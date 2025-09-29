@@ -1,7 +1,7 @@
 import { RequestHandler, Router } from "express";
 import * as XLSX from "xlsx";
 import fs from "fs";
-import { AttendanceResponse, AttendanceSummary, Employee, EmployeesResponse } from "@shared/api";
+import { AttendanceResponse, AttendanceSummary, Employee, EmployeesResponse, DailyAttendanceResponse, DayStatus } from "@shared/api";
 import { getFilePath } from "./files";
 
 export const attendanceRouter = Router();
