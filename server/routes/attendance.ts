@@ -23,7 +23,10 @@ function toUpperNoSpaces(s: string) {
 }
 
 function findPresentSheet(wb: XLSX.WorkBook): XLSX.WorkSheet | null {
-  const sheetName = wb.SheetNames.find((n) => n.toLowerCase().includes("present"));
+  const sheetName = wb.SheetNames.find((n) => {
+    const s = n.toLowerCase().trim();
+    return s.includes("present") || s.includes("presant");
+  });
   if (!sheetName) return null;
   return wb.Sheets[sheetName] ?? null;
 }
