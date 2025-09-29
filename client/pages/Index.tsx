@@ -36,7 +36,12 @@ export default function Index() {
       if (!raw) return null;
       const p = JSON.parse(raw);
       if (!p.appkey || !p.authkey || !p.endpoint) return null;
-      return p as { appkey: string; authkey: string; endpoint: string; templateId?: string };
+      return p as {
+        appkey: string;
+        authkey: string;
+        endpoint: string;
+        templateId?: string;
+      };
     } catch {
       return null;
     }
@@ -48,17 +53,21 @@ export default function Index() {
     const dataUrl = await toPng(node, {
       cacheBust: true,
       pixelRatio: Math.min(window.devicePixelRatio || 2, 3),
-      backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--background") ? undefined : "white",
+      backgroundColor: getComputedStyle(
+        document.documentElement,
+      ).getPropertyValue("--background")
+        ? undefined
+        : "white",
     });
     return dataUrl;
   }
 
   function dataUrlToBlob(dataUrl: string) {
-    const parts = dataUrl.split(',');
+    const parts = dataUrl.split(",");
     const meta = parts[0];
-    const base64 = parts[1] || '';
+    const base64 = parts[1] || "";
     const mimeMatch = meta.match(/data:([^;]+);base64/);
-    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    const mime = mimeMatch ? mimeMatch[1] : "application/octet-stream";
     const byteChars = atob(base64);
     const byteNumbers = new Array(byteChars.length);
     for (let i = 0; i < byteChars.length; i++) {
@@ -82,7 +91,9 @@ export default function Index() {
       }
       const dataUrl = await capturePngDataUrl();
       if (!dataUrl) return;
-      const meta = parseMonthYear(files.find((f) => f.filename === file)?.originalName);
+      const meta = parseMonthYear(
+        files.find((f) => f.filename === file)?.originalName,
+      );
       const month = meta?.label || "Month";
       const roll = summaryQuery.data!.employee.number;
       const message = `${month}-${roll}`;
@@ -121,12 +132,19 @@ export default function Index() {
       const dataUrl = await toPng(node, {
         cacheBust: true,
         pixelRatio: Math.min(window.devicePixelRatio || 2, 3),
-        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--background") ? undefined : "white",
+        backgroundColor: getComputedStyle(
+          document.documentElement,
+        ).getPropertyValue("--background")
+          ? undefined
+          : "white",
       });
       const link = document.createElement("a");
       const emp = summaryQuery.data?.employee;
-      const fileLabel = files.find((f) => f.filename === file)?.originalName || "report";
-      const namePart = emp ? `${emp.name.replace(/[^a-z0-9]+/gi, "_")}_${emp.number}` : "selection";
+      const fileLabel =
+        files.find((f) => f.filename === file)?.originalName || "report";
+      const namePart = emp
+        ? `${emp.name.replace(/[^a-z0-9]+/gi, "_")}_${emp.number}`
+        : "selection";
       link.download = `${namePart}__${fileLabel.replace(/\s+/g, "_")}.png`;
       link.href = dataUrl;
       link.click();
@@ -229,7 +247,11 @@ export default function Index() {
             >
               Download
             </Button>
-            <Button size="sm" onClick={handleSendWhatsApp} disabled={!summaryQuery.data}>
+            <Button
+              size="sm"
+              onClick={handleSendWhatsApp}
+              disabled={!summaryQuery.data}
+            >
               Send WhatsApp
             </Button>
           </div>
@@ -293,155 +315,182 @@ export default function Index() {
           </div>
 
           <div ref={captureRef} className="space-y-4">
-          {summaryQuery.data && (
-            <>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-muted-foreground">Roll Number</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm">
-                    <div className="font-bold text-base">{summaryQuery.data.employee.number}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-muted-foreground">Name</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm">
-                    <div className="font-bold text-base">{summaryQuery.data.employee.name}</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-muted-foreground">Department</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm">
-                    <div className="font-bold text-base">{summaryQuery.data.details?.department || "-"}</div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-7">
-                <StatCard
-                  title="Present"
-                  value={summaryQuery.data.summary.present}
-                  color="bg-emerald-500"
-                />
-                <StatCard
-                  title="Absent"
-                  value={summaryQuery.data.summary.absent}
-                  color="bg-rose-500"
-                />
-                <StatCard
-                  title="Weekoff"
-                  value={summaryQuery.data.summary.weekoff}
-                  color="bg-amber-500"
-                />
-                <StatCard
-                  title="ATD"
-                  value={summaryQuery.data.summary.atd}
-                  color="bg-blue-500"
-                />
-                <StatCard
-                  title="OT Hours"
-                  value={summaryQuery.data.summary.otHours}
-                  color="bg-cyan-500"
-                />
-                <StatCard
-                  title="Minus"
-                  value={summaryQuery.data.summary.minus ?? 0}
-                  color="bg-fuchsia-500"
-                />
-                <StatCard
-                  title="Kitchen"
-                  value={summaryQuery.data.summary.kitchen ?? 0}
-                  color="bg-indigo-500"
-                />
-              </div>
-            </>
-          )}
-
-
-          {summaryQuery.data?.details && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground">
-                    Mobile
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm">
-                  <div>{summaryQuery.data.details.mobile1 || "-"}</div>
-                  <div>{summaryQuery.data.details.mobile2 || ""}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground">
-                    Present Address
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm">
-                  <div className="whitespace-pre-wrap">
-                    {summaryQuery.data.details.presentAddress || "-"}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {dailyQuery.data && (
-            <div className="mt-6 rounded-md border overflow-hidden">
-              <div className="flex items-center justify-between bg-emerald-500 text-white font-semibold px-4 py-2">
-                <span>Monthly Calendar</span>
-                <span className="text-white/90 text-sm">
-                  {parseMonthYear(files.find((f) => f.filename === file)?.originalName)?.label || ""}
-                </span>
-              </div>
-              <div className="px-4 py-3">
-                <div className="grid grid-cols-7 gap-2 text-xs font-medium text-muted-foreground mb-2">
-                  <div className="text-center">Sun</div>
-                  <div className="text-center">Mon</div>
-                  <div className="text-center">Tue</div>
-                  <div className="text-center">Wed</div>
-                  <div className="text-center">Thu</div>
-                  <div className="text-center">Fri</div>
-                  <div className="text-center">Sat</div>
+            {summaryQuery.data && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-muted-foreground">
+                        Roll Number
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm">
+                      <div className="font-bold text-base">
+                        {summaryQuery.data.employee.number}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-muted-foreground">
+                        Name
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm">
+                      <div className="font-bold text-base">
+                        {summaryQuery.data.employee.name}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-muted-foreground">
+                        Department
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm">
+                      <div className="font-bold text-base">
+                        {summaryQuery.data.details?.department || "-"}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-                {(() => {
-                  const meta = parseMonthYear(files.find((f) => f.filename === file)?.originalName);
-                  const cells = buildCalendarCells(dailyQuery.data!.days, meta?.year, meta?.monthIndex);
-                  const rows = [] as (typeof cells)[number][][];
-                  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
-                  return rows.map((row, ri) => (
-                    <div key={ri} className="grid grid-cols-7 gap-2 mb-2">
-                      {row.map((cell, ci) => (
-                        <div key={ci} className="min-h-[76px] rounded-md border bg-card">
-                          {cell ? (
-                            <div className="p-2 space-y-1">
-                              <div className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-muted text-foreground/80">
-                                {cell.day}
-                              </div>
-                              <div className={"text-xs font-medium " + codeColor(cell.code)}>
-                                {cell.code || ""}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {cell.ot ? `OT: ${cell.ot}` : ""}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="p-2" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ));
-                })()}
-              </div>
-            </div>
-          )}
 
+                <div className="grid gap-4 sm:grid-cols-7">
+                  <StatCard
+                    title="Present"
+                    value={summaryQuery.data.summary.present}
+                    color="bg-emerald-500"
+                  />
+                  <StatCard
+                    title="Absent"
+                    value={summaryQuery.data.summary.absent}
+                    color="bg-rose-500"
+                  />
+                  <StatCard
+                    title="Weekoff"
+                    value={summaryQuery.data.summary.weekoff}
+                    color="bg-amber-500"
+                  />
+                  <StatCard
+                    title="ATD"
+                    value={summaryQuery.data.summary.atd}
+                    color="bg-blue-500"
+                  />
+                  <StatCard
+                    title="OT Hours"
+                    value={summaryQuery.data.summary.otHours}
+                    color="bg-cyan-500"
+                  />
+                  <StatCard
+                    title="Minus"
+                    value={summaryQuery.data.summary.minus ?? 0}
+                    color="bg-fuchsia-500"
+                  />
+                  <StatCard
+                    title="Kitchen"
+                    value={summaryQuery.data.summary.kitchen ?? 0}
+                    color="bg-indigo-500"
+                  />
+                </div>
+              </>
+            )}
+
+            {summaryQuery.data?.details && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-muted-foreground">
+                      Mobile
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    <div>{summaryQuery.data.details.mobile1 || "-"}</div>
+                    <div>{summaryQuery.data.details.mobile2 || ""}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-muted-foreground">
+                      Present Address
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    <div className="whitespace-pre-wrap">
+                      {summaryQuery.data.details.presentAddress || "-"}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {dailyQuery.data && (
+              <div className="mt-6 rounded-md border overflow-hidden">
+                <div className="flex items-center justify-between bg-emerald-500 text-white font-semibold px-4 py-2">
+                  <span>Monthly Calendar</span>
+                  <span className="text-white/90 text-sm">
+                    {parseMonthYear(
+                      files.find((f) => f.filename === file)?.originalName,
+                    )?.label || ""}
+                  </span>
+                </div>
+                <div className="px-4 py-3">
+                  <div className="grid grid-cols-7 gap-2 text-xs font-medium text-muted-foreground mb-2">
+                    <div className="text-center">Sun</div>
+                    <div className="text-center">Mon</div>
+                    <div className="text-center">Tue</div>
+                    <div className="text-center">Wed</div>
+                    <div className="text-center">Thu</div>
+                    <div className="text-center">Fri</div>
+                    <div className="text-center">Sat</div>
+                  </div>
+                  {(() => {
+                    const meta = parseMonthYear(
+                      files.find((f) => f.filename === file)?.originalName,
+                    );
+                    const cells = buildCalendarCells(
+                      dailyQuery.data!.days,
+                      meta?.year,
+                      meta?.monthIndex,
+                    );
+                    const rows = [] as (typeof cells)[number][][];
+                    for (let i = 0; i < cells.length; i += 7)
+                      rows.push(cells.slice(i, i + 7));
+                    return rows.map((row, ri) => (
+                      <div key={ri} className="grid grid-cols-7 gap-2 mb-2">
+                        {row.map((cell, ci) => (
+                          <div
+                            key={ci}
+                            className="min-h-[76px] rounded-md border bg-card"
+                          >
+                            {cell ? (
+                              <div className="p-2 space-y-1">
+                                <div className="inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold bg-muted text-foreground/80">
+                                  {cell.day}
+                                </div>
+                                <div
+                                  className={
+                                    "text-xs font-medium " +
+                                    codeColor(cell.code)
+                                  }
+                                >
+                                  {cell.code || ""}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {cell.ot ? `OT: ${cell.ot}` : ""}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="p-2" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
 
           {!files.length && (
@@ -460,7 +509,8 @@ export default function Index() {
 }
 
 function parseMonthYear(name?: string | null) {
-  if (!name) return null as null | { year: number; monthIndex: number; label: string };
+  if (!name)
+    return null as null | { year: number; monthIndex: number; label: string };
   const base = name.replace(/\.[^.]+$/, "");
   const months = [
     "January",
@@ -481,7 +531,9 @@ function parseMonthYear(name?: string | null) {
   if (!m) return null;
   const monthName = m[1];
   const year = parseInt(m[2], 10);
-  const monthIndex = months.findIndex((x) => x.toLowerCase() === monthName.toLowerCase());
+  const monthIndex = months.findIndex(
+    (x) => x.toLowerCase() === monthName.toLowerCase(),
+  );
   const label = `${months[monthIndex]} ${year}`;
   return { year, monthIndex, label };
 }
@@ -492,7 +544,9 @@ function buildCalendarCells(days: any[], year?: number, monthIndex?: number) {
   if (typeof year === "number" && typeof monthIndex === "number") {
     leading = new Date(year, monthIndex, 1).getDay();
   }
-  const cells: (any | null)[] = Array(Math.max(0, leading)).fill(null).concat(sorted);
+  const cells: (any | null)[] = Array(Math.max(0, leading))
+    .fill(null)
+    .concat(sorted);
   const trailing = (7 - (cells.length % 7)) % 7;
   for (let i = 0; i < trailing; i++) cells.push(null);
   return cells;

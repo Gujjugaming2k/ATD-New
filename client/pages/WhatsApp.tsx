@@ -16,16 +16,28 @@ type WhatsAppConfig = {
 function loadConfig(): WhatsAppConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { endpoint: "https://whatsapp.atdsonata.fun/api/create-message", appkey: "", authkey: "", templateId: "" };
+    if (!raw)
+      return {
+        endpoint: "https://whatsapp.atdsonata.fun/api/create-message",
+        appkey: "",
+        authkey: "",
+        templateId: "",
+      };
     const parsed = JSON.parse(raw);
     return {
-      endpoint: parsed.endpoint || "https://whatsapp.atdsonata.fun/api/create-message",
+      endpoint:
+        parsed.endpoint || "https://whatsapp.atdsonata.fun/api/create-message",
       appkey: parsed.appkey || "",
       authkey: parsed.authkey || "",
       templateId: parsed.templateId || "",
     };
   } catch {
-    return { endpoint: "https://whatsapp.atdsonata.fun/api/create-message", appkey: "", authkey: "", templateId: "" };
+    return {
+      endpoint: "https://whatsapp.atdsonata.fun/api/create-message",
+      appkey: "",
+      authkey: "",
+      templateId: "",
+    };
   }
 }
 
@@ -52,8 +64,12 @@ export default function WhatsAppSettings() {
   return (
     <div className="container mx-auto py-10 space-y-6">
       <section className="space-y-2">
-        <h1 className="text-3xl font-extrabold tracking-tight">WhatsApp Settings</h1>
-        <p className="text-muted-foreground">Store API details for sending reports on WhatsApp.</p>
+        <h1 className="text-3xl font-extrabold tracking-tight">
+          WhatsApp Settings
+        </h1>
+        <p className="text-muted-foreground">
+          Store API details for sending reports on WhatsApp.
+        </p>
       </section>
 
       <Card>
@@ -65,7 +81,9 @@ export default function WhatsAppSettings() {
             <label className="mb-2 block text-sm font-medium">Endpoint</label>
             <Input
               value={config.endpoint}
-              onChange={(e) => setConfig((c) => ({ ...c, endpoint: e.target.value }))}
+              onChange={(e) =>
+                setConfig((c) => ({ ...c, endpoint: e.target.value }))
+              }
               placeholder="https://whatsapp.atdsonata.fun/api/create-message"
             />
           </div>
@@ -73,7 +91,9 @@ export default function WhatsAppSettings() {
             <label className="mb-2 block text-sm font-medium">App Key</label>
             <Input
               value={config.appkey}
-              onChange={(e) => setConfig((c) => ({ ...c, appkey: e.target.value }))}
+              onChange={(e) =>
+                setConfig((c) => ({ ...c, appkey: e.target.value }))
+              }
               placeholder="your appkey"
             />
           </div>
@@ -81,15 +101,21 @@ export default function WhatsAppSettings() {
             <label className="mb-2 block text-sm font-medium">Auth Key</label>
             <Input
               value={config.authkey}
-              onChange={(e) => setConfig((c) => ({ ...c, authkey: e.target.value }))}
+              onChange={(e) =>
+                setConfig((c) => ({ ...c, authkey: e.target.value }))
+              }
               placeholder="your authkey"
             />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium">Template ID (optional)</label>
+            <label className="mb-2 block text-sm font-medium">
+              Template ID (optional)
+            </label>
             <Input
               value={config.templateId || ""}
-              onChange={(e) => setConfig((c) => ({ ...c, templateId: e.target.value }))}
+              onChange={(e) =>
+                setConfig((c) => ({ ...c, templateId: e.target.value }))
+              }
               placeholder="e.g. 1234 (if your provider requires it)"
             />
           </div>
