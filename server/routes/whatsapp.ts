@@ -102,34 +102,20 @@ async function postFormUrlEncoded(
   return { ok: resp.ok, status: resp.status, body: json } as const;
 }
 
-// New: create a temporary, signed public URL for an uploaded image
-whatsappRouter.post("/image-url", upload.single("file"), async (req, res) => {
+// New: create a temporary, signed public URL from a data URL (JSON payload)
+whatsappRouter.post("/image-url", async (req, res) => {
   try {
-    let buffer: Buffer | null = null;
-    let originalName = (req.body?.name as string) || "attendance.png";
-
-    if (req.file && req.file.buffer) {
-      buffer = Buffer.from(
-        req.file.buffer.buffer,
-        req.file.buffer.byteOffset,
-        req.file.buffer.byteLength,
-      );
-      originalName = req.file.originalname || originalName;
-    } else if (req.body?.imageDataUrl) {
-      const d = dataUrlToBuffer(String(req.body.imageDataUrl));
-      buffer = d.buffer;
+    const originalName = (req.body?.name as string) || "attendance.png";
+    const imageDataUrl = String(req.body?.imageDataUrl || "");
+    if (!imageDataUrl.startsWith("data:")) {
+      return res.status(400).json({ error: "imageDataUrl is required" });
     }
-
-    if (!buffer) {
-      return res.status(400).json({ error: "No image provided" });
-    }
-
-    const filename = saveBufferToTemp(buffer, originalName);
+    const d = dataUrlToBuffer(imageDataUrl);
+    const filename = saveBufferToTemp(d.buffer, originalName);
     const exp = Date.now() + MEDIA_TTL_MS;
     const sig = signMedia(filename, String(exp));
     const base = getPublicBase(req);
     const url = `${base}/uploads-temp/${exp}/${sig}/${encodeURIComponent(filename)}`;
-
     res.json({ url, expiresAt: exp });
   } catch (e: any) {
     res
@@ -139,7 +125,7 @@ whatsappRouter.post("/image-url", upload.single("file"), async (req, res) => {
 });
 
 // Send WhatsApp using provider that expects a URL-only 'file' parameter
-whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
+whatsappRouter.post("/send", upload.none(), async (req, res) => {
   try {
     const { endpoint, appkey, authkey, to, message } = req.body || {};
     if (!endpoint || !appkey || !authkey || !to || !message) {
