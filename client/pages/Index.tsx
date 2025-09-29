@@ -53,6 +53,21 @@ export default function Index() {
     return dataUrl;
   }
 
+  function dataUrlToBlob(dataUrl: string) {
+    const parts = dataUrl.split(',');
+    const meta = parts[0];
+    const base64 = parts[1] || '';
+    const mimeMatch = meta.match(/data:([^;]+);base64/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    const byteChars = atob(base64);
+    const byteNumbers = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) {
+      byteNumbers[i] = byteChars.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: mime });
+  }
+
   async function handleSendWhatsApp() {
     try {
       const cfg = loadWhatsConfig();
@@ -72,9 +87,7 @@ export default function Index() {
       const roll = summaryQuery.data!.employee.number;
       const message = `${month}-${roll}`;
 
-      // convert dataUrl to blob
-      const resBlob = await fetch(dataUrl);
-      const blob = await resBlob.blob();
+      const blob = dataUrlToBlob(dataUrl);
       const form = new FormData();
       form.append("endpoint", cfg.endpoint);
       form.append("appkey", cfg.appkey);
