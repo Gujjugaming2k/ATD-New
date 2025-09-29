@@ -11,15 +11,19 @@ function normalizeStr(v: unknown): string {
 }
 
 function isIgnored(v: string): boolean {
-  const s = v.trim();
+  const s = String(v ?? "").trim();
   if (!s) return true;
   if (/^no\.?$/i.test(s)) return true; // header/identifier
-  if (s.includes(".")) return true; // ignore if contains '.'
+  if (s === ".") return true; // ignore rows where cell is only a dot
   return false;
 }
 
 function toUpperNoSpaces(s: string) {
   return s.replace(/\s+/g, " ").trim().toUpperCase();
+}
+
+function normalizeForCompare(s: string) {
+  return s.replace(/[.]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
 }
 
 function findPresentSheet(wb: XLSX.WorkBook): XLSX.WorkSheet | null {
@@ -127,8 +131,8 @@ attendanceRouter.get("/summary", ((req, res) => {
   if (!sheet) return res.status(400).json({ error: "Sheet 'present' not found" });
 
   const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
-  const normNumber = number ? toUpperNoSpaces(number) : undefined;
-  const normName = name ? toUpperNoSpaces(name) : undefined;
+  const normNumber = number ? normalizeForCompare(number) : undefined;
+  const normName = name ? normalizeForCompare(name) : undefined;
 
   let foundRow = -1;
   let foundEmp: Employee | null = null;
@@ -139,8 +143,8 @@ attendanceRouter.get("/summary", ((req, res) => {
     const c = normalizeStr(cellC?.v);
     if (isIgnored(b) || isIgnored(c)) continue;
 
-    const matchNumber = normNumber && toUpperNoSpaces(b) === normNumber;
-    const matchName = normName && toUpperNoSpaces(c) === normName;
+    const matchNumber = normNumber && normalizeForCompare(b) === normNumber;
+    const matchName = normName && normalizeForCompare(c) === normName;
 
     if ((normNumber && matchNumber) || (normName && matchName)) {
       foundRow = r;
