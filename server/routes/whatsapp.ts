@@ -27,11 +27,13 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
     if ((req.body as any)?.template_id) form.append("template_id", String((req.body as any).template_id));
 
     if (req.file && req.file.buffer) {
-      const blob = new Blob([req.file.buffer], { type: req.file.mimetype || "image/png" });
+      const u8 = new Uint8Array(req.file.buffer.buffer, req.file.buffer.byteOffset, req.file.buffer.byteLength);
+      const blob = new Blob([u8], { type: req.file.mimetype || "image/png" });
       form.append("file", blob, req.file.originalname || "attendance.png");
     } else if (imageDataUrl) {
       const { buffer, mime } = dataUrlToBuffer(String(imageDataUrl));
-      const blob = new Blob([buffer], { type: mime });
+      const u8 = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+      const blob = new Blob([u8], { type: mime });
       form.append("file", blob, "attendance.png");
     } else {
       return res.status(400).json({ error: "Missing file or imageDataUrl" });
