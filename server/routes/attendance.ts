@@ -186,3 +186,50 @@ attendanceRouter.get("/summary", ((req, res) => {
   const response: AttendanceResponse = { file, employee: foundEmp, summary };
   res.json(response);
 }) as RequestHandler);
+
+attendanceRouter.get("/daily", ((req, res) => {
+  const { file, number, name } = req.query as { file?: string; number?: string; name?: string };
+  if (!file) return res.status(400).json({ error: "Missing file param" });
+  if (!number && !name) return res.status(400).json({ error: "Provide number or name" });
+
+  const filePath = getFilePath(file);
+  let wb: XLSX.WorkBook;
+  try {
+    const data = fs.readFileSync(filePath);
+    wb = XLSX.read(data, { type: "buffer" });
+  } catch (e: any) {
+    if (e && e.code === "ENOENT") return res.status(404).json({ error: "File not found" });
+    return res.status(400).json({ error: "Unable to read Excel file" });
+  }
+  const sheet = findPresentSheet(wb);
+  if (!sheet) return res.status(400).json({ error: "Sheet 'present' not found" });
+
+  const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
+  const normNumber = number ? normalizeForCompare(number) : undefined;
+  const normName = name ? normalizeForCompare(name) : undefined;
+
+  let foundRow = -1;
+  let foundEmp: Employee | null = null;
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    const cellB = sheet[XLSX.utils.encode_cell({ r, c: 1 })];
+    const cellC = sheet[XLSX.utils.encode_cell({ r, c: 2 })];
+    const b = normalizeStr(cellB?.v);
+    const c = normalizeStr(cellC?.v);
+    if (isIgnored(b) || isIgnored(c)) continue;
+
+    const matchNumber = normNumber && normalizeForCompare(b) === normNumber;
+    const matchName = normName && normalizeForCompare(c) === normName;
+    if ((normNumber && matchNumber) || (normName && matchName)) {
+      foundRow = r;
+      foundEmp = { number: b, name: c };
+      break;
+    }
+  }
+  if (foundRow === -1 || !foundEmp) {
+    return res.status(404).json({ error: "Employee not found" });
+  }
+
+  const days = getDailyStatuses(sheet, foundRow);
+  const responseDaily: DailyAttendanceResponse = { file, employee: foundEmp, days };
+  res.json(responseDaily);
+}) as RequestHandler);
