@@ -23,6 +23,12 @@ export default function Layout({ children }: PropsWithChildren) {
             >
               Upload & Files
             </NavItem>
+            <NavItem
+              to="/whatsapp"
+              current={location.pathname.startsWith("/whatsapp")}
+            >
+              WhatsApp
+            </NavItem>
           </nav>
         </div>
       </header>

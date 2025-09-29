@@ -120,11 +120,12 @@ function summarizeRow(ws: XLSX.WorkSheet, rowIndex: number): AttendanceSummary {
     weekoff += cls.weekoff;
     otHours += cls.ot;
   }
-  // Override with summary columns when present: AJ (35) Present, AK (36) Absent, AL (37) Weekoff, AN (39) Minus, AP (41) OT, AQ (42) Kitchen
+  // Override with summary columns when present: AJ (35) Present, AK (36) Absent, AL (37) Weekoff, AN (39) Minus, AO (40) ATD, AP (41) OT, AQ (42) Kitchen
   const presentCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 35 })];
   const absentCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 36 })];
   const weekoffCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 37 })];
   const minusCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 39 })];
+  const atdCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 40 })];
   const otCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 41 })];
   const kitchenCell = ws[XLSX.utils.encode_cell({ r: rowIndex, c: 42 })];
 
@@ -141,7 +142,9 @@ function summarizeRow(ws: XLSX.WorkSheet, rowIndex: number): AttendanceSummary {
   const parsedKitchen = Number.parseFloat(String(kitchenCell?.v ?? ""));
   const kitchen = !Number.isNaN(parsedKitchen) ? parsedKitchen : undefined;
 
-  const atd = present + weekoff;
+  let atd = present + weekoff;
+  const parsedATD = Number.parseFloat(String(atdCell?.v ?? ""));
+  if (!Number.isNaN(parsedATD)) atd = parsedATD;
   return { present, absent, weekoff, otHours, atd, minus, kitchen };
 }
 
@@ -218,6 +221,9 @@ attendanceRouter.get("/summary", ((req, res) => {
   }
 
   const summary = summarizeRow(sheet, foundRow);
+  const aw = String(
+    sheet[XLSX.utils.encode_cell({ r: foundRow, c: 48 })]?.v ?? "",
+  ).trim();
   const bb = String(
     sheet[XLSX.utils.encode_cell({ r: foundRow, c: 53 })]?.v ?? "",
   ).trim();
@@ -235,6 +241,7 @@ attendanceRouter.get("/summary", ((req, res) => {
       mobile1: bb || undefined,
       mobile2: bc || undefined,
       presentAddress: br || undefined,
+      department: aw || undefined,
     },
   };
   res.json(response);
@@ -290,6 +297,9 @@ attendanceRouter.get("/daily", ((req, res) => {
   }
 
   const days = getDailyStatuses(sheet, foundRow);
+  const aw = String(
+    sheet[XLSX.utils.encode_cell({ r: foundRow, c: 48 })]?.v ?? "",
+  ).trim();
   const bb = String(
     sheet[XLSX.utils.encode_cell({ r: foundRow, c: 53 })]?.v ?? "",
   ).trim();
@@ -307,6 +317,7 @@ attendanceRouter.get("/daily", ((req, res) => {
       mobile1: bb || undefined,
       mobile2: bc || undefined,
       presentAddress: br || undefined,
+      department: aw || undefined,
     },
   };
   res.json(responseDaily);
