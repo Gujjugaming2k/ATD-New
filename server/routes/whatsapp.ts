@@ -59,7 +59,10 @@ function getPublicBase(req: any) {
 }
 
 function signMedia(filename: string, exp: string) {
-  return crypto.createHmac("sha256", MEDIA_SIGN_KEY).update(`${filename}:${exp}`).digest("hex");
+  return crypto
+    .createHmac("sha256", MEDIA_SIGN_KEY)
+    .update(`${filename}:${exp}`)
+    .digest("hex");
 }
 
 async function postJson(target: string, payload: any) {
@@ -78,7 +81,10 @@ async function postJson(target: string, payload: any) {
   return { ok: resp.ok, status: resp.status, body: json } as const;
 }
 
-async function postFormUrlEncoded(target: string, payload: Record<string, string>) {
+async function postFormUrlEncoded(
+  target: string,
+  payload: Record<string, string>,
+) {
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(payload)) params.append(k, v);
   const resp = await fetch(target, {
@@ -98,16 +104,23 @@ async function postFormUrlEncoded(target: string, payload: Record<string, string
 
 whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
   try {
-    const { endpoint, appkey, authkey, to, message, imageDataUrl } = req.body || {};
+    const { endpoint, appkey, authkey, to, message, imageDataUrl } =
+      req.body || {};
     if (!endpoint || !appkey || !authkey || !to || !message) {
-      return res.status(400).json({ error: "Missing endpoint/appkey/authkey/to/message" });
+      return res
+        .status(400)
+        .json({ error: "Missing endpoint/appkey/authkey/to/message" });
     }
 
     let buffer: Buffer | null = null;
     let originalName = "attendance.png";
 
     if (req.file && req.file.buffer) {
-      buffer = Buffer.from(req.file.buffer.buffer, req.file.buffer.byteOffset, req.file.buffer.byteLength);
+      buffer = Buffer.from(
+        req.file.buffer.buffer,
+        req.file.buffer.byteOffset,
+        req.file.buffer.byteLength,
+      );
       originalName = req.file.originalname || originalName;
     } else if (imageDataUrl) {
       const d = dataUrlToBuffer(String(imageDataUrl));
@@ -123,8 +136,14 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
       tempUrl = `${base}/uploads-temp/${exp}/${sig}/${encodeURIComponent(filename)}`;
     }
 
-    const basePayload: any = { appkey: String(appkey), authkey: String(authkey), to: String(to), message: String(message) };
-    if ((req.body as any)?.template_id) basePayload.template_id = String((req.body as any).template_id);
+    const basePayload: any = {
+      appkey: String(appkey),
+      authkey: String(authkey),
+      to: String(to),
+      message: String(message),
+    };
+    if ((req.body as any)?.template_id)
+      basePayload.template_id = String((req.body as any).template_id);
 
     // Prefer sending x-www-form-urlencoded with URL in 'file'; never send multipart/binary
     const formPayload: Record<string, string> = { ...basePayload };
@@ -133,16 +152,25 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
 
     // Fallback to JSON with 'file' URL
     if (!result.ok) {
-      const jsonPayload = tempUrl ? { ...basePayload, file: tempUrl } : { ...basePayload };
+      const jsonPayload = tempUrl
+        ? { ...basePayload, file: tempUrl }
+        : { ...basePayload };
       result = await postJson(String(endpoint), jsonPayload);
     }
 
     if (!result.ok) {
-      return res.status(result.status || 502).json({ error: "Remote API error", response: result.body });
+      return res
+        .status(result.status || 502)
+        .json({ error: "Remote API error", response: result.body });
     }
 
     res.json({ ok: true, response: result.body });
   } catch (e: any) {
-    res.status(500).json({ error: "Failed to send WhatsApp", detail: e?.message || String(e) });
+    res
+      .status(500)
+      .json({
+        error: "Failed to send WhatsApp",
+        detail: e?.message || String(e),
+      });
   }
 });

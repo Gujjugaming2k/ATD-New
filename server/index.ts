@@ -18,7 +18,10 @@ function ensureDir(p: string) {
 }
 
 function signMedia(filename: string, exp: string) {
-  return crypto.createHmac("sha256", MEDIA_SIGN_KEY).update(`${filename}:${exp}`).digest("hex");
+  return crypto
+    .createHmac("sha256", MEDIA_SIGN_KEY)
+    .update(`${filename}:${exp}`)
+    .digest("hex");
 }
 
 export function createServer() {
@@ -51,18 +54,25 @@ export function createServer() {
   // Format: /uploads-temp/:exp/:sig/:filename
   ensureDir(TEMP_UPLOAD_DIR);
   app.get("/uploads-temp/:exp/:sig/:filename", (req, res) => {
-    const { filename, exp, sig } = req.params as { filename: string; exp: string; sig: string };
+    const { filename, exp, sig } = req.params as {
+      filename: string;
+      exp: string;
+      sig: string;
+    };
 
     const now = Date.now();
     const expNum = Number(exp);
-    if (!Number.isFinite(expNum)) return res.status(400).json({ error: "Invalid exp" });
+    if (!Number.isFinite(expNum))
+      return res.status(400).json({ error: "Invalid exp" });
     if (now > expNum) return res.status(410).json({ error: "Link expired" });
 
     const expected = signMedia(filename, String(exp));
-    if (sig !== expected) return res.status(403).json({ error: "Invalid signature" });
+    if (sig !== expected)
+      return res.status(403).json({ error: "Invalid signature" });
 
     const filePath = path.join(TEMP_UPLOAD_DIR, filename);
-    if (!fs.existsSync(filePath)) return res.status(404).json({ error: "File not found" });
+    if (!fs.existsSync(filePath))
+      return res.status(404).json({ error: "File not found" });
 
     res.sendFile(filePath);
   });
