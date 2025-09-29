@@ -6,6 +6,23 @@ import { getFilePath } from "./files";
 
 export const attendanceRouter = Router();
 
+function getDailyStatuses(ws: XLSX.WorkSheet, rowIndex: number): DayStatus[] {
+  const days: DayStatus[] = [];
+  for (let day = 1; day <= 31; day++) {
+    const c = 3 + (day - 1); // D..AH
+    const cell = ws[XLSX.utils.encode_cell({ r: rowIndex, c })];
+    const cls = classifyCell(cell?.v);
+    let code: DayStatus["code"] = "";
+    if (cls.weekoff) code = "WO";
+    else if (cls.absent) code = "A";
+    else if (cls.present) code = "P";
+    const otMatch = normalizeStr(cell?.v).toUpperCase().match(/OT\s*([0-9]+(?:\.[0-9]+)?)?/);
+    const ot = otMatch && otMatch[1] ? parseFloat(otMatch[1]) : 0;
+    days.push({ day, code, ot: Number.isNaN(ot) ? 0 : ot });
+  }
+  return days;
+}
+
 function normalizeStr(v: unknown): string {
   return String(v ?? "").trim();
 }
