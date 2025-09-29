@@ -204,73 +204,74 @@ export default function Index() {
 
           <div ref={captureRef} className="space-y-4">
           {summaryQuery.data && (
-            <div className="grid gap-4 sm:grid-cols-7">
-              <StatCard
-                title="Present"
-                value={summaryQuery.data.summary.present}
-                color="bg-emerald-500"
-              />
-              <StatCard
-                title="Absent"
-                value={summaryQuery.data.summary.absent}
-                color="bg-rose-500"
-              />
-              <StatCard
-                title="Weekoff"
-                value={summaryQuery.data.summary.weekoff}
-                color="bg-amber-500"
-              />
-              <StatCard
-                title="ATD"
-                value={summaryQuery.data.summary.atd}
-                color="bg-blue-500"
-              />
-              <StatCard
-                title="OT Hours"
-                value={summaryQuery.data.summary.otHours}
-                color="bg-cyan-500"
-              />
-              <StatCard
-                title="Minus"
-                value={summaryQuery.data.summary.minus ?? 0}
-                color="bg-fuchsia-500"
-              />
-              <StatCard
-                title="Kitchen"
-                value={summaryQuery.data.summary.kitchen ?? 0}
-                color="bg-indigo-500"
-              />
-            </div>
+            <>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-muted-foreground">Roll Number</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    <div className="font-bold text-base">{summaryQuery.data.employee.number}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-muted-foreground">Name</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    <div className="font-bold text-base">{summaryQuery.data.employee.name}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-muted-foreground">Department</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    <div className="font-bold text-base">{summaryQuery.data.details?.department || "-"}</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-7">
+                <StatCard
+                  title="Present"
+                  value={summaryQuery.data.summary.present}
+                  color="bg-emerald-500"
+                />
+                <StatCard
+                  title="Absent"
+                  value={summaryQuery.data.summary.absent}
+                  color="bg-rose-500"
+                />
+                <StatCard
+                  title="Weekoff"
+                  value={summaryQuery.data.summary.weekoff}
+                  color="bg-amber-500"
+                />
+                <StatCard
+                  title="ATD"
+                  value={summaryQuery.data.summary.atd}
+                  color="bg-blue-500"
+                />
+                <StatCard
+                  title="OT Hours"
+                  value={summaryQuery.data.summary.otHours}
+                  color="bg-cyan-500"
+                />
+                <StatCard
+                  title="Minus"
+                  value={summaryQuery.data.summary.minus ?? 0}
+                  color="bg-fuchsia-500"
+                />
+                <StatCard
+                  title="Kitchen"
+                  value={summaryQuery.data.summary.kitchen ?? 0}
+                  color="bg-indigo-500"
+                />
+              </div>
+            </>
           )}
 
-          {summaryQuery.data && (
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground">Roll Number</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm">
-                  <div>{summaryQuery.data.employee.number}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground">Name</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm">
-                  <div>{summaryQuery.data.employee.name}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground">Department</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm">
-                  <div>{summaryQuery.data.details?.department || "-"}</div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
 
           {summaryQuery.data?.details && (
             <div className="grid gap-4 sm:grid-cols-2">
