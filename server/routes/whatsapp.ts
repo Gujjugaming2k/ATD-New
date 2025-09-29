@@ -1,8 +1,36 @@
-import { RequestHandler, Router } from "express";
+import { Router } from "express";
 import multer from "multer";
+import fs from "fs";
+import path from "path";
 
 export const whatsappRouter = Router();
 const upload = multer({ storage: multer.memoryStorage() });
+
+const UPLOAD_DIR = path.resolve(process.cwd(), "server", "uploads");
+
+function ensureUploadDir() {
+  if (!fs.existsSync(UPLOAD_DIR)) {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  }
+}
+
+function sanitizeFilename(name: string) {
+  return name.replace(/[^a-zA-Z0-9_.-]/g, "_");
+}
+
+function timestampedName(originalName: string) {
+  const ts = new Date().toISOString().replace(/[:.]/g, "-");
+  const safe = sanitizeFilename(originalName || "attendance.png");
+  return `${ts}__${safe}`;
+}
+
+function saveBufferToUploads(buffer: Buffer, originalName = "attendance.png") {
+  ensureUploadDir();
+  const filename = timestampedName(originalName);
+  const full = path.join(UPLOAD_DIR, filename);
+  fs.writeFileSync(full, buffer);
+  return filename;
+}
 
 function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mime: string } {
   const [meta, base64] = (dataUrl || "").split(",");
@@ -12,15 +40,45 @@ function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; mime: string } {
   return { buffer, mime };
 }
 
+function getOrigin(req: any) {
+  const xfProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0];
+  const xfHost = String(req.headers["x-forwarded-host"] || "").split(",")[0];
+  const protocol = xfProto || req.protocol || "http";
+  const host = xfHost || req.get("host");
+  return `${protocol}://${host}`;
+}
+
 whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
   try {
-    const { endpoint, appkey, authkey, to, message, imageDataUrl } =
-      req.body || {};
+    const { endpoint, appkey, authkey, to, message, imageDataUrl } = req.body || {};
     if (!endpoint || !appkey || !authkey || !to || !message) {
       return res
         .status(400)
         .json({ error: "Missing endpoint/appkey/authkey/to/message" });
     }
+
+    // Build an image buffer from either uploaded file or data URL
+    let buffer: Buffer | null = null;
+    let originalName = "attendance.png";
+
+    if (req.file && req.file.buffer) {
+      buffer = Buffer.from(
+        req.file.buffer.buffer,
+        req.file.buffer.byteOffset,
+        req.file.buffer.byteLength,
+      );
+      originalName = req.file.originalname || originalName;
+    } else if (imageDataUrl) {
+      const d = dataUrlToBuffer(String(imageDataUrl));
+      buffer = d.buffer;
+      // keep default originalName; mime is not required for URL mode
+    } else {
+      return res.status(400).json({ error: "Missing file or imageDataUrl" });
+    }
+
+    // Save image locally and generate a public URL to satisfy providers that require URLs
+    const filename = saveBufferToUploads(buffer!, originalName);
+    const fileUrl = `${getOrigin(req)}/uploads/${encodeURIComponent(filename)}`;
 
     const form = new FormData();
     form.append("appkey", String(appkey));
@@ -30,26 +88,8 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
     if ((req.body as any)?.template_id)
       form.append("template_id", String((req.body as any).template_id));
 
-    if (req.file && req.file.buffer) {
-      const u8 = new Uint8Array(
-        req.file.buffer.buffer,
-        req.file.buffer.byteOffset,
-        req.file.buffer.byteLength,
-      );
-      const blob = new Blob([u8], { type: req.file.mimetype || "image/png" });
-      form.append("file", blob, req.file.originalname || "attendance.png");
-    } else if (imageDataUrl) {
-      const { buffer, mime } = dataUrlToBuffer(String(imageDataUrl));
-      const u8 = new Uint8Array(
-        buffer.buffer,
-        buffer.byteOffset,
-        buffer.byteLength,
-      );
-      const blob = new Blob([u8], { type: mime });
-      form.append("file", blob, "attendance.png");
-    } else {
-      return res.status(400).json({ error: "Missing file or imageDataUrl" });
-    }
+    // Send as URL instead of binary file
+    form.append("file", fileUrl);
 
     const target = String(endpoint);
     const resp = await fetch(target, {
@@ -66,18 +106,11 @@ whatsappRouter.post("/send", upload.single("file"), async (req, res) => {
     }
 
     if (!resp.ok) {
-      return res
-        .status(resp.status)
-        .json({ error: "Remote API error", response: json });
+      return res.status(resp.status).json({ error: "Remote API error", response: json });
     }
 
     res.json({ ok: true, response: json });
   } catch (e: any) {
-    res
-      .status(500)
-      .json({
-        error: "Failed to send WhatsApp",
-        detail: e?.message || String(e),
-      });
+    res.status(500).json({ error: "Failed to send WhatsApp", detail: e?.message || String(e) });
   }
 });
