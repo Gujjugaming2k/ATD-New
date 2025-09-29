@@ -90,9 +90,11 @@ export function createServer() {
     });
     if (!match) return res.status(404).json({ error: "File not found" });
     const ts = Number(match.split("-")[0]);
-    if (!Number.isFinite(ts)) return res.status(400).json({ error: "Invalid id" });
+    if (!Number.isFinite(ts))
+      return res.status(400).json({ error: "Invalid id" });
     const now = Date.now();
-    if (now > ts + MEDIA_URL_TTL_MS) return res.status(410).json({ error: "Link expired" });
+    if (now > ts + MEDIA_URL_TTL_MS)
+      return res.status(410).json({ error: "Link expired" });
     const filePath = path.join(TEMP_UPLOAD_DIR, match);
     res.sendFile(filePath);
   };

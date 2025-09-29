@@ -110,7 +110,11 @@ export default function Index() {
       const uploadResp = await fetch("/api/whatsapp/image-url", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imageDataUrl: dataUrl, name: `${message}.png`, publicBase: cfg.imageHost || undefined }),
+        body: JSON.stringify({
+          imageDataUrl: dataUrl,
+          name: `${message}.png`,
+          publicBase: cfg.imageHost || undefined,
+        }),
       });
       const uploadJson = await uploadResp.json();
       if (!uploadResp.ok || !uploadJson?.url) {

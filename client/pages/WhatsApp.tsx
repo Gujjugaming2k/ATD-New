@@ -121,7 +121,9 @@ export default function WhatsAppSettings() {
             />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium">Image Host URL</label>
+            <label className="mb-2 block text-sm font-medium">
+              Image Host URL
+            </label>
             <Input
               value={config.imageHost || ""}
               onChange={(e) =>
@@ -130,7 +132,8 @@ export default function WhatsAppSettings() {
               placeholder="https://your-domain.com"
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              Optional. If set, generated image URLs will use this host instead of the app origin.
+              Optional. If set, generated image URLs will use this host instead
+              of the app origin.
             </p>
           </div>
           <div>

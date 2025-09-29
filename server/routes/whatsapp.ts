@@ -128,7 +128,10 @@ whatsappRouter.post("/image-url", async (req, res) => {
       return res.status(400).json({ error: "imageDataUrl is required" });
     }
     const d = dataUrlToBuffer(imageDataUrl);
-    const { id, ext } = saveBufferToShort(d.buffer, { mime: d.mime, originalName });
+    const { id, ext } = saveBufferToShort(d.buffer, {
+      mime: d.mime,
+      originalName,
+    });
     let base = getPublicBase(req);
     const requested = String(req.body?.publicBase || "").trim();
     if (requested) {
@@ -142,7 +145,10 @@ whatsappRouter.post("/image-url", async (req, res) => {
   } catch (e: any) {
     res
       .status(500)
-      .json({ error: "Failed to create image URL", detail: e?.message || String(e) });
+      .json({
+        error: "Failed to create image URL",
+        detail: e?.message || String(e),
+      });
   }
 });
 
@@ -223,6 +229,9 @@ whatsappRouter.post("/send", upload.none(), async (req, res) => {
   } catch (e: any) {
     res
       .status(500)
-      .json({ error: "Failed to send WhatsApp", detail: e?.message || String(e) });
+      .json({
+        error: "Failed to send WhatsApp",
+        detail: e?.message || String(e),
+      });
   }
 });
