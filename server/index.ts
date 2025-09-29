@@ -10,7 +10,12 @@ import { attendanceRouter } from "./routes/attendance";
 import { whatsappRouter } from "./routes/whatsapp";
 
 const UPLOAD_DIR = path.resolve(process.cwd(), "server", "uploads");
+const TEMP_UPLOAD_DIR = path.resolve(process.cwd(), "server", "uploads_tmp");
 const MEDIA_SIGN_KEY = process.env.MEDIA_SIGN_KEY || "dev-secret";
+
+function ensureDir(p: string) {
+  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+}
 
 function signMedia(filename: string, exp: string) {
   return crypto.createHmac("sha256", MEDIA_SIGN_KEY).update(`${filename}:${exp}`).digest("hex");
@@ -39,13 +44,14 @@ export function createServer() {
   app.use("/api/whatsapp", whatsappRouter);
 
   // Serve uploaded files statically (read-only)
+  ensureDir(UPLOAD_DIR);
   app.use("/uploads", express.static(UPLOAD_DIR));
 
-  // Signed, temporary URL for uploads: /uploads-temp/:filename?exp=unix_ms&sig=HMAC
-  app.get("/uploads-temp/:filename", (req, res) => {
-    const { filename } = req.params as { filename: string };
-    const { exp, sig } = req.query as { exp?: string; sig?: string };
-    if (!exp || !sig) return res.status(400).json({ error: "Missing exp/sig" });
+  // Signed, temporary URL for temp uploads (path-based signature to keep extension at end)
+  // Format: /uploads-temp/:exp/:sig/:filename
+  ensureDir(TEMP_UPLOAD_DIR);
+  app.get("/uploads-temp/:exp/:sig/:filename", (req, res) => {
+    const { filename, exp, sig } = req.params as { filename: string; exp: string; sig: string };
 
     const now = Date.now();
     const expNum = Number(exp);
@@ -55,7 +61,7 @@ export function createServer() {
     const expected = signMedia(filename, String(exp));
     if (sig !== expected) return res.status(403).json({ error: "Invalid signature" });
 
-    const filePath = path.join(UPLOAD_DIR, filename);
+    const filePath = path.join(TEMP_UPLOAD_DIR, filename);
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: "File not found" });
 
     res.sendFile(filePath);
