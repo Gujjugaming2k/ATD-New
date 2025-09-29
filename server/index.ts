@@ -27,7 +27,10 @@ export function createServer() {
   app.use("/api/attendance", attendanceRouter);
 
   // Optional: serve uploaded files statically (read-only)
-  app.use("/uploads", express.static(path.resolve(process.cwd(), "server", "uploads")));
+  app.use(
+    "/uploads",
+    express.static(path.resolve(process.cwd(), "server", "uploads")),
+  );
 
   return app;
 }

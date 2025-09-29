@@ -40,7 +40,8 @@ filesRouter.get("/", ((_req, res) => {
     .map((filename) => {
       const stat = fs.statSync(path.join(UPLOAD_DIR, filename));
       const parts = filename.split("__");
-      const originalName = parts.length > 1 ? parts.slice(1).join("__") : filename;
+      const originalName =
+        parts.length > 1 ? parts.slice(1).join("__") : filename;
       const uploaded: UploadedFile = {
         filename,
         originalName,
@@ -76,7 +77,7 @@ filesRouter.delete("/:filename", ((req, res) => {
   const filePath = path.join(UPLOAD_DIR, filename);
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: "File not found" });
-    }
+  }
   fs.unlinkSync(filePath);
   res.status(204).end();
 }) as RequestHandler);

@@ -3,7 +3,14 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { FilesListResponse, UploadedFile } from "@shared/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function FilesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -22,7 +29,10 @@ export default function FilesPage() {
     mutationFn: async (file: File): Promise<UploadedFile> => {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/files/upload", { method: "POST", body: fd });
+      const res = await fetch("/api/files/upload", {
+        method: "POST",
+        body: fd,
+      });
       if (!res.ok) throw new Error("Upload failed");
       return res.json();
     },
@@ -31,7 +41,9 @@ export default function FilesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (filename: string) => {
-      const res = await fetch(`/api/files/${encodeURIComponent(filename)}`, { method: "DELETE" });
+      const res = await fetch(`/api/files/${encodeURIComponent(filename)}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error("Delete failed");
     },
     onSuccess: () => filesQuery.refetch(),
@@ -62,7 +74,10 @@ export default function FilesPage() {
             onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
             className="block w-full text-sm text-muted-foreground file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-primary-foreground hover:file:bg-primary/90"
           />
-          <Button onClick={onUpload} disabled={!selectedFile || uploadMutation.isPending}>
+          <Button
+            onClick={onUpload}
+            disabled={!selectedFile || uploadMutation.isPending}
+          >
             {uploadMutation.isPending ? "Uploading..." : "Upload"}
           </Button>
         </CardContent>
@@ -87,12 +102,22 @@ export default function FilesPage() {
               <TableBody>
                 {files.map((f) => (
                   <TableRow key={f.filename}>
-                    <TableCell className="font-medium">{f.originalName}</TableCell>
-                    <TableCell className="truncate max-w-[320px]">{f.filename}</TableCell>
+                    <TableCell className="font-medium">
+                      {f.originalName}
+                    </TableCell>
+                    <TableCell className="truncate max-w-[320px]">
+                      {f.filename}
+                    </TableCell>
                     <TableCell>{(f.size / 1024).toFixed(1)} KB</TableCell>
-                    <TableCell>{new Date(f.uploadedAt).toLocaleString()}</TableCell>
+                    <TableCell>
+                      {new Date(f.uploadedAt).toLocaleString()}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="destructive" size="sm" onClick={() => deleteMutation.mutate(f.filename)}>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => deleteMutation.mutate(f.filename)}
+                      >
                         Remove
                       </Button>
                     </TableCell>
@@ -100,7 +125,10 @@ export default function FilesPage() {
                 ))}
                 {files.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={5}
+                      className="text-center text-muted-foreground"
+                    >
                       No files uploaded yet.
                     </TableCell>
                   </TableRow>
@@ -109,7 +137,12 @@ export default function FilesPage() {
             </Table>
           </div>
           {latest && (
-            <p className="mt-4 text-sm text-muted-foreground">Latest file will be used on Home by default: <span className="font-medium text-foreground">{latest.originalName}</span></p>
+            <p className="mt-4 text-sm text-muted-foreground">
+              Latest file will be used on Home by default:{" "}
+              <span className="font-medium text-foreground">
+                {latest.originalName}
+              </span>
+            </p>
           )}
         </CardContent>
       </Card>

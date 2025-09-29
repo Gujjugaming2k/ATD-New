@@ -1,7 +1,14 @@
 import { RequestHandler, Router } from "express";
 import * as XLSX from "xlsx";
 import fs from "fs";
-import { AttendanceResponse, AttendanceSummary, Employee, EmployeesResponse, DailyAttendanceResponse, DayStatus } from "@shared/api";
+import {
+  AttendanceResponse,
+  AttendanceSummary,
+  Employee,
+  EmployeesResponse,
+  DailyAttendanceResponse,
+  DayStatus,
+} from "@shared/api";
 import { getFilePath } from "./files";
 
 export const attendanceRouter = Router();
@@ -16,7 +23,9 @@ function getDailyStatuses(ws: XLSX.WorkSheet, rowIndex: number): DayStatus[] {
     if (cls.weekoff) code = "WO";
     else if (cls.absent) code = "A";
     else if (cls.present) code = "P";
-    const otMatch = normalizeStr(cell?.v).toUpperCase().match(/OT\s*([0-9]+(?:\.[0-9]+)?)?/);
+    const otMatch = normalizeStr(cell?.v)
+      .toUpperCase()
+      .match(/OT\s*([0-9]+(?:\.[0-9]+)?)?/);
     const ot = otMatch && otMatch[1] ? parseFloat(otMatch[1]) : 0;
     days.push({ day, code, ot: Number.isNaN(ot) ? 0 : ot });
   }
@@ -86,9 +95,11 @@ function classifyCell(raw: any) {
     if (!Number.isNaN(n)) ot += n;
   }
 
-  if (s === "P" || s.startsWith("P/") || s === "PR" || s === "PRESENT") present = 1;
+  if (s === "P" || s.startsWith("P/") || s === "PR" || s === "PRESENT")
+    present = 1;
   else if (s === "A" || s === "ABSENT") absent = 1;
-  else if (s === "WO" || s === "W/O" || s === "WEEKOFF" || s === "WEEK OFF") weekoff = 1;
+  else if (s === "WO" || s === "W/O" || s === "WEEKOFF" || s === "WEEK OFF")
+    weekoff = 1;
 
   return { present, absent, weekoff, ot } as const;
 }
@@ -136,20 +147,27 @@ attendanceRouter.get("/employees", ((req, res) => {
     const data = fs.readFileSync(filePath);
     wb = XLSX.read(data, { type: "buffer" });
   } catch (e: any) {
-    if (e && e.code === "ENOENT") return res.status(404).json({ error: "File not found" });
+    if (e && e.code === "ENOENT")
+      return res.status(404).json({ error: "File not found" });
     return res.status(400).json({ error: "Unable to read Excel file" });
   }
   const sheet = findPresentSheet(wb);
-  if (!sheet) return res.status(400).json({ error: "Sheet 'present' not found" });
+  if (!sheet)
+    return res.status(400).json({ error: "Sheet 'present' not found" });
   const employees = readEmployeesFromSheet(sheet);
   const response: EmployeesResponse = { file, employees };
   res.json(response);
 }) as RequestHandler);
 
 attendanceRouter.get("/summary", ((req, res) => {
-  const { file, number, name } = req.query as { file?: string; number?: string; name?: string };
+  const { file, number, name } = req.query as {
+    file?: string;
+    number?: string;
+    name?: string;
+  };
   if (!file) return res.status(400).json({ error: "Missing file param" });
-  if (!number && !name) return res.status(400).json({ error: "Provide number or name" });
+  if (!number && !name)
+    return res.status(400).json({ error: "Provide number or name" });
 
   const filePath = getFilePath(file);
   let wb: XLSX.WorkBook;
@@ -157,11 +175,13 @@ attendanceRouter.get("/summary", ((req, res) => {
     const data = fs.readFileSync(filePath);
     wb = XLSX.read(data, { type: "buffer" });
   } catch (e: any) {
-    if (e && e.code === "ENOENT") return res.status(404).json({ error: "File not found" });
+    if (e && e.code === "ENOENT")
+      return res.status(404).json({ error: "File not found" });
     return res.status(400).json({ error: "Unable to read Excel file" });
   }
   const sheet = findPresentSheet(wb);
-  if (!sheet) return res.status(400).json({ error: "Sheet 'present' not found" });
+  if (!sheet)
+    return res.status(400).json({ error: "Sheet 'present' not found" });
 
   const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
   const normNumber = number ? normalizeForCompare(number) : undefined;
@@ -196,9 +216,14 @@ attendanceRouter.get("/summary", ((req, res) => {
 }) as RequestHandler);
 
 attendanceRouter.get("/daily", ((req, res) => {
-  const { file, number, name } = req.query as { file?: string; number?: string; name?: string };
+  const { file, number, name } = req.query as {
+    file?: string;
+    number?: string;
+    name?: string;
+  };
   if (!file) return res.status(400).json({ error: "Missing file param" });
-  if (!number && !name) return res.status(400).json({ error: "Provide number or name" });
+  if (!number && !name)
+    return res.status(400).json({ error: "Provide number or name" });
 
   const filePath = getFilePath(file);
   let wb: XLSX.WorkBook;
@@ -206,11 +231,13 @@ attendanceRouter.get("/daily", ((req, res) => {
     const data = fs.readFileSync(filePath);
     wb = XLSX.read(data, { type: "buffer" });
   } catch (e: any) {
-    if (e && e.code === "ENOENT") return res.status(404).json({ error: "File not found" });
+    if (e && e.code === "ENOENT")
+      return res.status(404).json({ error: "File not found" });
     return res.status(400).json({ error: "Unable to read Excel file" });
   }
   const sheet = findPresentSheet(wb);
-  if (!sheet) return res.status(400).json({ error: "Sheet 'present' not found" });
+  if (!sheet)
+    return res.status(400).json({ error: "Sheet 'present' not found" });
 
   const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
   const normNumber = number ? normalizeForCompare(number) : undefined;
@@ -238,6 +265,10 @@ attendanceRouter.get("/daily", ((req, res) => {
   }
 
   const days = getDailyStatuses(sheet, foundRow);
-  const responseDaily: DailyAttendanceResponse = { file, employee: foundEmp, days };
+  const responseDaily: DailyAttendanceResponse = {
+    file,
+    employee: foundEmp,
+    days,
+  };
   res.json(responseDaily);
 }) as RequestHandler);
