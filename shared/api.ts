@@ -45,3 +45,15 @@ export interface AttendanceResponse {
   employee: Employee;
   summary: AttendanceSummary;
 }
+
+export interface DayStatus {
+  day: number;
+  code: "P" | "A" | "WO" | "";
+  ot: number;
+}
+
+export interface DailyAttendanceResponse {
+  file: string;
+  employee: Employee;
+  days: DayStatus[];
+}
