@@ -221,6 +221,9 @@ attendanceRouter.get("/summary", ((req, res) => {
   }
 
   const summary = summarizeRow(sheet, foundRow);
+  const aw = String(
+    sheet[XLSX.utils.encode_cell({ r: foundRow, c: 48 })]?.v ?? "",
+  ).trim();
   const bb = String(
     sheet[XLSX.utils.encode_cell({ r: foundRow, c: 53 })]?.v ?? "",
   ).trim();
@@ -238,6 +241,7 @@ attendanceRouter.get("/summary", ((req, res) => {
       mobile1: bb || undefined,
       mobile2: bc || undefined,
       presentAddress: br || undefined,
+      department: aw || undefined,
     },
   };
   res.json(response);
@@ -293,6 +297,9 @@ attendanceRouter.get("/daily", ((req, res) => {
   }
 
   const days = getDailyStatuses(sheet, foundRow);
+  const aw = String(
+    sheet[XLSX.utils.encode_cell({ r: foundRow, c: 48 })]?.v ?? "",
+  ).trim();
   const bb = String(
     sheet[XLSX.utils.encode_cell({ r: foundRow, c: 53 })]?.v ?? "",
   ).trim();
@@ -310,6 +317,7 @@ attendanceRouter.get("/daily", ((req, res) => {
       mobile1: bb || undefined,
       mobile2: bc || undefined,
       presentAddress: br || undefined,
+      department: aw || undefined,
     },
   };
   res.json(responseDaily);

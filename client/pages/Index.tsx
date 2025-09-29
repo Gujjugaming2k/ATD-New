@@ -243,6 +243,35 @@ export default function Index() {
             </div>
           )}
 
+          {summaryQuery.data && (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground">Roll Number</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm">
+                  <div>{summaryQuery.data.employee.number}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground">Name</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm">
+                  <div>{summaryQuery.data.employee.name}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground">Department</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm">
+                  <div>{summaryQuery.data.details?.department || "-"}</div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {summaryQuery.data?.details && (
             <div className="grid gap-4 sm:grid-cols-2">
               <Card>

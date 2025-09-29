@@ -47,6 +47,7 @@ export interface EmployeeDetails {
   mobile1?: string; // from BB
   mobile2?: string; // from BC
   presentAddress?: string; // from BR
+  department?: string; // from AW
 }
 
 export interface AttendanceResponse {
