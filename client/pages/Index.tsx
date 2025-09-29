@@ -173,31 +173,65 @@ export default function Index() {
 
           {summaryQuery.data && (
             <div className="grid gap-4 sm:grid-cols-5">
-              <StatCard title="Present" value={summaryQuery.data.summary.present} color="bg-emerald-500" />
-              <StatCard title="Absent" value={summaryQuery.data.summary.absent} color="bg-rose-500" />
-              <StatCard title="Weekoff" value={summaryQuery.data.summary.weekoff} color="bg-amber-500" />
-              <StatCard title="ATD" value={summaryQuery.data.summary.atd} color="bg-blue-500" />
-              <StatCard title="OT Hours" value={summaryQuery.data.summary.otHours} color="bg-cyan-500" />
+              <StatCard
+                title="Present"
+                value={summaryQuery.data.summary.present}
+                color="bg-emerald-500"
+              />
+              <StatCard
+                title="Absent"
+                value={summaryQuery.data.summary.absent}
+                color="bg-rose-500"
+              />
+              <StatCard
+                title="Weekoff"
+                value={summaryQuery.data.summary.weekoff}
+                color="bg-amber-500"
+              />
+              <StatCard
+                title="ATD"
+                value={summaryQuery.data.summary.atd}
+                color="bg-blue-500"
+              />
+              <StatCard
+                title="OT Hours"
+                value={summaryQuery.data.summary.otHours}
+                color="bg-cyan-500"
+              />
             </div>
           )}
 
           {summaryQuery.data?.details && (
             <div className="grid gap-4 sm:grid-cols-3">
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Mobile</CardTitle></CardHeader>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground">
+                    Mobile
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="text-sm">
                   <div>{summaryQuery.data.details.mobile1 || "-"}</div>
                   <div>{summaryQuery.data.details.mobile2 || ""}</div>
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Present Address</CardTitle></CardHeader>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground">
+                    Present Address
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="text-sm">
-                  <div className="whitespace-pre-wrap">{summaryQuery.data.details.presentAddress || "-"}</div>
+                  <div className="whitespace-pre-wrap">
+                    {summaryQuery.data.details.presentAddress || "-"}
+                  </div>
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Minus / Kitchen</CardTitle></CardHeader>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground">
+                    Minus / Kitchen
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="text-sm">
                   <div>Minus: {summaryQuery.data.summary.minus ?? 0}</div>
                   <div>Kitchen: {summaryQuery.data.summary.kitchen ?? 0}</div>
@@ -208,12 +242,26 @@ export default function Index() {
 
           {dailyQuery.data && (
             <div className="mt-6 rounded-md border overflow-hidden">
-              <div className="bg-emerald-500 text-white font-semibold px-4 py-2">Monthly Calendar</div>
+              <div className="bg-emerald-500 text-white font-semibold px-4 py-2">
+                Monthly Calendar
+              </div>
               {chunkDays(dailyQuery.data.days, 11).map((chunk, i) => (
                 <div key={i} className="border-t">
-                  <Row label="Date:" values={chunk.map((d) => String(d.day))} tone="muted" />
-                  <Row label="ATD" values={chunk.map((d) => d.code)} tone="normal" />
-                  <Row label="OT" values={chunk.map((d) => (d.ot ? String(d.ot) : ""))} tone="muted" />
+                  <Row
+                    label="Date:"
+                    values={chunk.map((d) => String(d.day))}
+                    tone="muted"
+                  />
+                  <Row
+                    label="ATD"
+                    values={chunk.map((d) => d.code)}
+                    tone="normal"
+                  />
+                  <Row
+                    label="OT"
+                    values={chunk.map((d) => (d.ot ? String(d.ot) : ""))}
+                    tone="muted"
+                  />
                 </div>
               ))}
               <div className="border-t bg-muted/50">
@@ -258,12 +306,30 @@ function chunkDays<T>(days: T[], size: number): T[][] {
   return out;
 }
 
-function Row({ label, values, tone }: { label: string; values: string[]; tone: "muted" | "normal" }) {
+function Row({
+  label,
+  values,
+  tone,
+}: {
+  label: string;
+  values: string[];
+  tone: "muted" | "normal";
+}) {
   return (
     <div className="grid grid-cols-[80px_repeat(11,minmax(0,1fr))] items-stretch">
-      <div className={"border-r px-3 py-2 text-sm font-semibold " + (tone === "muted" ? "bg-muted/60" : "")}>{label}</div>
+      <div
+        className={
+          "border-r px-3 py-2 text-sm font-semibold " +
+          (tone === "muted" ? "bg-muted/60" : "")
+        }
+      >
+        {label}
+      </div>
       {values.map((v, idx) => (
-        <div key={idx} className="px-2 py-2 text-center text-sm border-l first:border-l-0">
+        <div
+          key={idx}
+          className="px-2 py-2 text-center text-sm border-l first:border-l-0"
+        >
           {v}
         </div>
       ))}

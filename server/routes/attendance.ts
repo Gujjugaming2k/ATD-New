@@ -218,10 +218,25 @@ attendanceRouter.get("/summary", ((req, res) => {
   }
 
   const summary = summarizeRow(sheet, foundRow);
-  const bb = String(sheet[XLSX.utils.encode_cell({ r: foundRow, c: 53 })]?.v ?? "").trim();
-  const bc = String(sheet[XLSX.utils.encode_cell({ r: foundRow, c: 54 })]?.v ?? "").trim();
-  const br = String(sheet[XLSX.utils.encode_cell({ r: foundRow, c: 69 })]?.v ?? "").trim();
-  const response: AttendanceResponse = { file, employee: foundEmp, summary, details: { mobile1: bb || undefined, mobile2: bc || undefined, presentAddress: br || undefined } };
+  const bb = String(
+    sheet[XLSX.utils.encode_cell({ r: foundRow, c: 53 })]?.v ?? "",
+  ).trim();
+  const bc = String(
+    sheet[XLSX.utils.encode_cell({ r: foundRow, c: 54 })]?.v ?? "",
+  ).trim();
+  const br = String(
+    sheet[XLSX.utils.encode_cell({ r: foundRow, c: 69 })]?.v ?? "",
+  ).trim();
+  const response: AttendanceResponse = {
+    file,
+    employee: foundEmp,
+    summary,
+    details: {
+      mobile1: bb || undefined,
+      mobile2: bc || undefined,
+      presentAddress: br || undefined,
+    },
+  };
   res.json(response);
 }) as RequestHandler);
 
@@ -275,14 +290,24 @@ attendanceRouter.get("/daily", ((req, res) => {
   }
 
   const days = getDailyStatuses(sheet, foundRow);
-  const bb = String(sheet[XLSX.utils.encode_cell({ r: foundRow, c: 53 })]?.v ?? "").trim();
-  const bc = String(sheet[XLSX.utils.encode_cell({ r: foundRow, c: 54 })]?.v ?? "").trim();
-  const br = String(sheet[XLSX.utils.encode_cell({ r: foundRow, c: 69 })]?.v ?? "").trim();
+  const bb = String(
+    sheet[XLSX.utils.encode_cell({ r: foundRow, c: 53 })]?.v ?? "",
+  ).trim();
+  const bc = String(
+    sheet[XLSX.utils.encode_cell({ r: foundRow, c: 54 })]?.v ?? "",
+  ).trim();
+  const br = String(
+    sheet[XLSX.utils.encode_cell({ r: foundRow, c: 69 })]?.v ?? "",
+  ).trim();
   const responseDaily: DailyAttendanceResponse = {
     file,
     employee: foundEmp,
     days,
-    details: { mobile1: bb || undefined, mobile2: bc || undefined, presentAddress: br || undefined },
+    details: {
+      mobile1: bb || undefined,
+      mobile2: bc || undefined,
+      presentAddress: br || undefined,
+    },
   };
   res.json(responseDaily);
 }) as RequestHandler);
