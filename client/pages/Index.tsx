@@ -172,71 +172,66 @@ export default function Index() {
           </div>
 
           {summaryQuery.data && (
-            <div className="grid gap-4 sm:grid-cols-4">
-              <StatCard
-                title="Present"
-                value={summaryQuery.data.summary.present}
-                color="bg-emerald-500"
-              />
-              <StatCard
-                title="Absent"
-                value={summaryQuery.data.summary.absent}
-                color="bg-rose-500"
-              />
-              <StatCard
-                title="Weekoff"
-                value={summaryQuery.data.summary.weekoff}
-                color="bg-amber-500"
-              />
-              <StatCard
-                title="OT Hours"
-                value={summaryQuery.data.summary.otHours}
-                color="bg-cyan-500"
-              />
+            <div className="grid gap-4 sm:grid-cols-5">
+              <StatCard title="Present" value={summaryQuery.data.summary.present} color="bg-emerald-500" />
+              <StatCard title="Absent" value={summaryQuery.data.summary.absent} color="bg-rose-500" />
+              <StatCard title="Weekoff" value={summaryQuery.data.summary.weekoff} color="bg-amber-500" />
+              <StatCard title="ATD" value={summaryQuery.data.summary.atd} color="bg-blue-500" />
+              <StatCard title="OT Hours" value={summaryQuery.data.summary.otHours} color="bg-cyan-500" />
+            </div>
+          )}
+
+          {summaryQuery.data?.details && (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Mobile</CardTitle></CardHeader>
+                <CardContent className="text-sm">
+                  <div>{summaryQuery.data.details.mobile1 || "-"}</div>
+                  <div>{summaryQuery.data.details.mobile2 || ""}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Present Address</CardTitle></CardHeader>
+                <CardContent className="text-sm">
+                  <div className="whitespace-pre-wrap">{summaryQuery.data.details.presentAddress || "-"}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Minus / Kitchen</CardTitle></CardHeader>
+                <CardContent className="text-sm">
+                  <div>Minus: {summaryQuery.data.summary.minus ?? 0}</div>
+                  <div>Kitchen: {summaryQuery.data.summary.kitchen ?? 0}</div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
           {dailyQuery.data && (
-            <div className="mt-6">
-              <h3 className="mb-3 text-sm font-medium text-muted-foreground">
-                Date-wise Attendance
-              </h3>
-              <div className="grid grid-cols-7 gap-2">
-                {dailyQuery.data.days.map((d) => {
-                  const color =
-                    d.code === "P"
-                      ? "bg-emerald-500/15 text-emerald-700 border-emerald-300/50"
-                      : d.code === "A"
-                        ? "bg-rose-500/15 text-rose-700 border-rose-300/50"
-                        : d.code === "WO"
-                          ? "bg-amber-500/15 text-amber-700 border-amber-300/50"
-                          : "bg-muted text-foreground/60 border-muted";
-                  return (
-                    <div
-                      key={d.day}
-                      className={`rounded-md border p-2 text-center text-sm ${color}`}
-                    >
-                      <div className="font-semibold">{d.day}</div>
-                      <div className="text-xs">
-                        {d.code || ""}
-                        {d.ot ? ` • OT ${d.ot}` : ""}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <span className="h-3 w-3 rounded-sm bg-emerald-500/60 inline-block" />{" "}
-                  Present
+            <div className="mt-6 rounded-md border overflow-hidden">
+              <div className="bg-emerald-500 text-white font-semibold px-4 py-2">Monthly Calendar</div>
+              {chunkDays(dailyQuery.data.days, 11).map((chunk, i) => (
+                <div key={i} className="border-t">
+                  <Row label="Date:" values={chunk.map((d) => String(d.day))} tone="muted" />
+                  <Row label="ATD" values={chunk.map((d) => d.code)} tone="normal" />
+                  <Row label="OT" values={chunk.map((d) => (d.ot ? String(d.ot) : ""))} tone="muted" />
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="h-3 w-3 rounded-sm bg-rose-500/60 inline-block" />{" "}
-                  Absent
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="h-3 w-3 rounded-sm bg-amber-500/60 inline-block" />{" "}
-                  Weekoff
+              ))}
+              <div className="border-t bg-muted/50">
+                <div className="grid grid-cols-14 gap-2 px-4 py-3 text-sm auto-cols-fr">
+                  <div className="font-semibold">P</div>
+                  <div>{summaryQuery.data?.summary.present ?? 0}</div>
+                  <div className="font-semibold">W</div>
+                  <div>{summaryQuery.data?.summary.weekoff ?? 0}</div>
+                  <div className="font-semibold">A</div>
+                  <div>{summaryQuery.data?.summary.absent ?? 0}</div>
+                  <div className="font-semibold">Minus</div>
+                  <div>{summaryQuery.data?.summary.minus ?? 0}</div>
+                  <div className="font-semibold">ATD</div>
+                  <div>{summaryQuery.data?.summary.atd ?? 0}</div>
+                  <div className="font-semibold">OT</div>
+                  <div>{summaryQuery.data?.summary.otHours ?? 0}</div>
+                  <div className="font-semibold">KICHEN</div>
+                  <div>{summaryQuery.data?.summary.kitchen ?? 0}</div>
                 </div>
               </div>
             </div>
@@ -253,6 +248,25 @@ export default function Index() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function chunkDays<T>(days: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < days.length; i += size) out.push(days.slice(i, i + size));
+  return out;
+}
+
+function Row({ label, values, tone }: { label: string; values: string[]; tone: "muted" | "normal" }) {
+  return (
+    <div className="grid grid-cols-[80px_repeat(11,minmax(0,1fr))] items-stretch">
+      <div className={"border-r px-3 py-2 text-sm font-semibold " + (tone === "muted" ? "bg-muted/60" : "")}>{label}</div>
+      {values.map((v, idx) => (
+        <div key={idx} className="px-2 py-2 text-center text-sm border-l first:border-l-0">
+          {v}
+        </div>
+      ))}
     </div>
   );
 }
