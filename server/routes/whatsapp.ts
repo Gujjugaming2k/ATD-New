@@ -114,7 +114,14 @@ whatsappRouter.post("/image-url", async (req, res) => {
     const filename = saveBufferToTemp(d.buffer, originalName);
     const exp = Date.now() + MEDIA_TTL_MS;
     const sig = signMedia(filename, String(exp));
-    const base = getPublicBase(req);
+    let base = getPublicBase(req);
+    const requested = String(req.body?.publicBase || "").trim();
+    if (requested) {
+      try {
+        const u = new URL(requested);
+        if (u.protocol === "http:" || u.protocol === "https:") base = u.origin;
+      } catch {}
+    }
     const url = `${base}/uploads-temp/${exp}/${sig}/${encodeURIComponent(filename)}`;
     res.json({ url, expiresAt: exp });
   } catch (e: any) {
