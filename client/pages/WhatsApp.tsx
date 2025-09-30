@@ -14,60 +14,105 @@ type WhatsAppConfig = {
   imageHost?: string; // e.g. https://your-domain.com
 };
 
+function defaultConfig(): WhatsAppConfig {
+  return {
+    endpoint: "https://whatsapp.atdsonata.fun/api/create-message",
+    appkey: "",
+    authkey: "",
+    templateId: "",
+    imageHost: "",
+  };
+}
+
 function loadConfig(): WhatsAppConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw)
-      return {
-        endpoint: "https://whatsapp.atdsonata.fun/api/create-message",
-        appkey: "",
-        authkey: "",
-        templateId: "",
-        imageHost: "",
-      };
+    if (!raw) return defaultConfig();
     const parsed = JSON.parse(raw);
     return {
-      endpoint:
-        parsed.endpoint || "https://whatsapp.atdsonata.fun/api/create-message",
+      endpoint: parsed.endpoint || defaultConfig().endpoint,
       appkey: parsed.appkey || "",
       authkey: parsed.authkey || "",
       templateId: parsed.templateId || "",
       imageHost: parsed.imageHost || "",
     };
   } catch {
-    return {
-      endpoint: "https://whatsapp.atdsonata.fun/api/create-message",
-      appkey: "",
-      authkey: "",
-      templateId: "",
-      imageHost: "",
-    };
+    return defaultConfig();
   }
 }
 
-function saveConfig(cfg: WhatsAppConfig) {
+function saveLocal(cfg: WhatsAppConfig) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
 }
 
 export default function WhatsAppSettings() {
   const [config, setConfig] = useState<WhatsAppConfig>(() => loadConfig());
+  const [loading, setLoading] = useState(false);
 
+  // Load server-side config on mount and prefer it over local
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await fetch("/api/whatsapp/config");
+        if (!resp.ok) return; // ignore if not available
+        const j = (await resp.json()) as Partial<WhatsAppConfig>;
+        const merged: WhatsAppConfig = {
+          endpoint: j.endpoint || config.endpoint || defaultConfig().endpoint,
+          appkey: j.appkey ?? config.appkey ?? "",
+          authkey: j.authkey ?? config.authkey ?? "",
+          templateId: j.templateId ?? config.templateId ?? "",
+          imageHost: j.imageHost ?? config.imageHost ?? "",
+        };
+        if (!cancelled) {
+          setConfig(merged);
+          try {
+            saveLocal(merged);
+          } catch {}
+        }
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Keep localStorage in sync for offline usage
   useEffect(() => {
     const id = setTimeout(() => {
       try {
-        saveConfig(config);
+        saveLocal(config);
       } catch {}
     }, 400);
     return () => clearTimeout(id);
   }, [config]);
 
-  function handleSave() {
-    if (!config.appkey || !config.authkey) {
-      toast.error("Enter both appkey and authkey");
+  async function handleSave() {
+    if (!config.endpoint || !config.appkey || !config.authkey) {
+      toast.error("Enter endpoint, appkey and authkey");
       return;
     }
-    saveConfig(config);
-    toast.success("WhatsApp settings saved");
+    try {
+      setLoading(true);
+      const resp = await fetch("/api/whatsapp/config", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(config),
+      });
+      const j = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        console.error(j);
+        toast.error("Failed to save to server");
+        return;
+      }
+      saveLocal(config);
+      toast.success("WhatsApp settings saved to server");
+    } catch (e) {
+      console.error(e);
+      toast.error("Error saving settings");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -149,7 +194,9 @@ export default function WhatsAppSettings() {
             />
           </div>
           <div className="pt-2">
-            <Button onClick={handleSave}>Save</Button>
+            <Button onClick={handleSave} disabled={loading}>
+              {loading ? "Saving..." : "Save"}
+            </Button>
           </div>
         </CardContent>
       </Card>
