@@ -218,8 +218,34 @@ export default function Index() {
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
   const [selectedName, setSelectedName] = useState<string | null>(null);
 
+  function isExcludedName(name: string) {
+    const n = String(name || "").trim();
+    if (!n) return true;
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    const monthRe = new RegExp(`\\b(${months.join("|")})\\b`, "i");
+    if (monthRe.test(n)) return true;
+    if (/^column\s*\d+$/i.test(n)) return true;
+    if (/^\d{4,}$/.test(n)) return true; // long numeric-only tokens (likely Excel serials)
+    return false;
+  }
+
   const filteredEmployees = useMemo(() => {
-    const list = employeesQuery.data?.employees ?? [];
+    const list = (employeesQuery.data?.employees ?? []).filter(
+      (e) => !isExcludedName(e.name),
+    );
     if (!search) return list.slice(0, 50);
     const q = search.toLowerCase();
     return list
@@ -230,6 +256,11 @@ export default function Index() {
       )
       .slice(0, 50);
   }, [employeesQuery.data, search]);
+
+  const totalEmployees = useMemo(() => {
+    const list = employeesQuery.data?.employees ?? [];
+    return list.filter((e) => !isExcludedName(e.name)).length;
+  }, [employeesQuery.data]);
 
   const summaryQuery = useQuery({
     queryKey: ["summary", file, selectedNumber, selectedName],
@@ -291,7 +322,7 @@ export default function Index() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-4">
             <div className="sm:col-span-1">
               <label className="mb-2 block text-sm font-medium">
                 Monthly file
@@ -314,6 +345,14 @@ export default function Index() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="sm:col-span-1">
+              <label className="mb-2 block text-sm font-medium">
+                Total employees
+              </label>
+              <div className="rounded-md border p-3 text-3xl font-extrabold tracking-tight bg-card">
+                {totalEmployees}
+              </div>
             </div>
             <div className="sm:col-span-2">
               <label className="mb-2 block text-sm font-medium">
