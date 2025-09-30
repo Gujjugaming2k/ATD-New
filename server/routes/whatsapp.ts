@@ -167,7 +167,8 @@ async function postFormUrlEncoded(
 
 // Get stored WhatsApp config
 whatsappRouter.get("/config", (req, res) => {
-  if (!requireIfSetAuthorized(req)) return res.status(401).json({ error: "Unauthorized" });
+  if (!requireIfSetAuthorized(req))
+    return res.status(401).json({ error: "Unauthorized" });
   const cfg = readStoredConfig();
   res.json(
     cfg || {
@@ -182,7 +183,8 @@ whatsappRouter.get("/config", (req, res) => {
 
 // Save WhatsApp config
 whatsappRouter.put("/config", (req, res) => {
-  if (!requireIfSetAuthorized(req)) return res.status(401).json({ error: "Unauthorized" });
+  if (!requireIfSetAuthorized(req))
+    return res.status(401).json({ error: "Unauthorized" });
   const b = req.body || {};
   const cfg: StoredConfig = {
     endpoint: String(b.endpoint || ""),
@@ -192,13 +194,20 @@ whatsappRouter.put("/config", (req, res) => {
     imageHost: b.imageHost ? String(b.imageHost) : undefined,
   };
   if (!cfg.endpoint || !cfg.appkey || !cfg.authkey) {
-    return res.status(400).json({ error: "endpoint, appkey, authkey are required" });
+    return res
+      .status(400)
+      .json({ error: "endpoint, appkey, authkey are required" });
   }
   try {
     writeStoredConfig(cfg);
     res.json({ ok: true });
   } catch (e: any) {
-    res.status(500).json({ error: "Failed to save config", detail: e?.message || String(e) });
+    res
+      .status(500)
+      .json({
+        error: "Failed to save config",
+        detail: e?.message || String(e),
+      });
   }
 });
 
@@ -226,12 +235,10 @@ whatsappRouter.post("/image-url", async (req, res) => {
     const url = `${base}/i/${id}.${ext}`;
     res.json({ url });
   } catch (e: any) {
-    res
-      .status(500)
-      .json({
-        error: "Failed to create image URL",
-        detail: e?.message || String(e),
-      });
+    res.status(500).json({
+      error: "Failed to create image URL",
+      detail: e?.message || String(e),
+    });
   }
 });
 
@@ -245,7 +252,7 @@ function formatTo91(raw: any) {
 // Send WhatsApp using provider that expects a URL-only 'file' parameter
 whatsappRouter.post("/send", upload.none(), async (req, res) => {
   try {
-    let { endpoint, appkey, authkey, to, message } = req.body || {} as any;
+    let { endpoint, appkey, authkey, to, message } = req.body || ({} as any);
 
     // fallback to server-stored config if not provided in request
     if (!endpoint || !appkey || !authkey) {
@@ -342,11 +349,9 @@ whatsappRouter.post("/send", upload.none(), async (req, res) => {
 
     res.json({ ok: true, response: result.body });
   } catch (e: any) {
-    res
-      .status(500)
-      .json({
-        error: "Failed to send WhatsApp",
-        detail: e?.message || String(e),
-      });
+    res.status(500).json({
+      error: "Failed to send WhatsApp",
+      detail: e?.message || String(e),
+    });
   }
 });
