@@ -12,6 +12,52 @@ const MEDIA_SIGN_KEY = process.env.MEDIA_SIGN_KEY || "dev-secret";
 const MEDIA_TTL_MS = Number(process.env.MEDIA_URL_TTL_MS || 5 * 60 * 1000);
 const MEDIA_PUBLIC_BASE = process.env.MEDIA_PUBLIC_BASE || ""; // e.g. https://your-domain.com
 
+// Server-side config persistence
+const CONFIG_DIR = path.resolve(process.cwd(), "server", "config");
+const CONFIG_FILE = path.join(CONFIG_DIR, "whatsapp.json");
+
+type StoredConfig = {
+  endpoint: string;
+  appkey: string;
+  authkey: string;
+  templateId?: string;
+  imageHost?: string;
+};
+
+function ensureConfigDir() {
+  if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
+}
+
+function readStoredConfig(): StoredConfig | null {
+  try {
+    ensureConfigDir();
+    if (!fs.existsSync(CONFIG_FILE)) return null;
+    const raw = fs.readFileSync(CONFIG_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    return {
+      endpoint: String(parsed.endpoint || ""),
+      appkey: String(parsed.appkey || ""),
+      authkey: String(parsed.authkey || ""),
+      templateId: parsed.templateId ? String(parsed.templateId) : undefined,
+      imageHost: parsed.imageHost ? String(parsed.imageHost) : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredConfig(cfg: StoredConfig) {
+  ensureConfigDir();
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), "utf8");
+}
+
+function requireIfSetAuthorized(req: any): boolean {
+  const token = process.env.ADMIN_TOKEN;
+  if (!token) return true; // if not configured, allow for now
+  const header = String(req.headers["x-admin-token"] || "").trim();
+  return header === token;
+}
+
 function ensureTempDir() {
   if (!fs.existsSync(TEMP_UPLOAD_DIR)) {
     fs.mkdirSync(TEMP_UPLOAD_DIR, { recursive: true });
@@ -119,6 +165,52 @@ async function postFormUrlEncoded(
   return { ok: resp.ok, status: resp.status, body: json } as const;
 }
 
+// Get stored WhatsApp config
+whatsappRouter.get("/config", (req, res) => {
+  if (!requireIfSetAuthorized(req))
+    return res.status(401).json({ error: "Unauthorized" });
+  const cfg = readStoredConfig();
+  res.json(
+    cfg || {
+      endpoint: "",
+      appkey: "",
+      authkey: "",
+      templateId: "",
+      imageHost: "",
+    },
+  );
+});
+
+// Save WhatsApp config
+whatsappRouter.put("/config", (req, res) => {
+  if (!requireIfSetAuthorized(req))
+    return res.status(401).json({ error: "Unauthorized" });
+  const b = req.body || {};
+  const cfg: StoredConfig = {
+    endpoint: String(b.endpoint || ""),
+    appkey: String(b.appkey || ""),
+    authkey: String(b.authkey || ""),
+    templateId: b.templateId ? String(b.templateId) : undefined,
+    imageHost: b.imageHost ? String(b.imageHost) : undefined,
+  };
+  if (!cfg.endpoint || !cfg.appkey || !cfg.authkey) {
+    return res
+      .status(400)
+      .json({ error: "endpoint, appkey, authkey are required" });
+  }
+  try {
+    writeStoredConfig(cfg);
+    res.json({ ok: true });
+  } catch (e: any) {
+    res
+      .status(500)
+      .json({
+        error: "Failed to save config",
+        detail: e?.message || String(e),
+      });
+  }
+});
+
 // New: create a temporary, signed public URL from a data URL (JSON payload)
 whatsappRouter.post("/image-url", async (req, res) => {
   try {
@@ -143,12 +235,10 @@ whatsappRouter.post("/image-url", async (req, res) => {
     const url = `${base}/i/${id}.${ext}`;
     res.json({ url });
   } catch (e: any) {
-    res
-      .status(500)
-      .json({
-        error: "Failed to create image URL",
-        detail: e?.message || String(e),
-      });
+    res.status(500).json({
+      error: "Failed to create image URL",
+      detail: e?.message || String(e),
+    });
   }
 });
 
@@ -162,7 +252,21 @@ function formatTo91(raw: any) {
 // Send WhatsApp using provider that expects a URL-only 'file' parameter
 whatsappRouter.post("/send", upload.none(), async (req, res) => {
   try {
-    const { endpoint, appkey, authkey, to, message } = req.body || {};
+    let { endpoint, appkey, authkey, to, message } = req.body || ({} as any);
+
+    // fallback to server-stored config if not provided in request
+    if (!endpoint || !appkey || !authkey) {
+      const stored = readStoredConfig();
+      if (stored) {
+        endpoint = endpoint || stored.endpoint;
+        appkey = appkey || stored.appkey;
+        authkey = authkey || stored.authkey;
+        if (!req.body?.template_id && stored.templateId) {
+          (req.body as any).template_id = stored.templateId;
+        }
+      }
+    }
+
     if (!endpoint || !appkey || !authkey || !to || !message) {
       return res
         .status(400)
@@ -197,6 +301,24 @@ whatsappRouter.post("/send", upload.none(), async (req, res) => {
       }
     }
 
+    // allow overriding public base from stored config
+    const stored = readStoredConfig();
+    let effectivePublicBase: string | undefined = undefined;
+    if (stored?.imageHost) {
+      try {
+        const u = new URL(stored.imageHost);
+        if (u.protocol === "http:" || u.protocol === "https:") {
+          effectivePublicBase = u.origin;
+        }
+      } catch {}
+    }
+    if (effectivePublicBase && tempUrl) {
+      try {
+        const tempU = new URL(tempUrl);
+        tempUrl = `${effectivePublicBase}${tempU.pathname}`;
+      } catch {}
+    }
+
     const basePayload: any = {
       appkey: String(appkey),
       authkey: String(authkey),
@@ -227,11 +349,9 @@ whatsappRouter.post("/send", upload.none(), async (req, res) => {
 
     res.json({ ok: true, response: result.body });
   } catch (e: any) {
-    res
-      .status(500)
-      .json({
-        error: "Failed to send WhatsApp",
-        detail: e?.message || String(e),
-      });
+    res.status(500).json({
+      error: "Failed to send WhatsApp",
+      detail: e?.message || String(e),
+    });
   }
 });

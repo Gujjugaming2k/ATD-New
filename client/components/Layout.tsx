@@ -32,7 +32,11 @@ export default function Layout({ children }: PropsWithChildren) {
           </nav>
         </div>
       </header>
-      <main>{children}</main>
+      <main>
+        <div className="w-full overflow-x-auto">
+          <div className="min-w-[1024px]">{children}</div>
+        </div>
+      </main>
       <footer className="border-t py-6 text-center text-sm text-muted-foreground">
         <div className="container mx-auto">
           © {new Date().getFullYear()} ATD Sonata
