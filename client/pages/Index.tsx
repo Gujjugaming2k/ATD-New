@@ -84,8 +84,11 @@ export default function Index() {
     return `91${last10}`;
   }
 
+  const [sending, setSending] = useState(false);
+
   async function handleSendWhatsApp() {
     try {
+      setSending(true);
       const cfg = loadWhatsConfig();
       if (!cfg) {
         toast.error("Set WhatsApp keys first in Settings (WhatsApp) page");
@@ -156,6 +159,8 @@ export default function Index() {
     } catch (e) {
       console.error(e);
       toast.error("Error sending on WhatsApp");
+    } finally {
+      setSending(false);
     }
   }
 
